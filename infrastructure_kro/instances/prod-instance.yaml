@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGroupInstance
+metadata:
+  name: user-admin-messaging-prod
+  namespace: default
+spec:
+  resourceGroup: user-admin-messaging-stack
+  values:
+    environment: "prod"
+    region: "us-east-1"
+    retainResources: true
+    connectionManagerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
+    messageHandlerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
+    websocketApiEndpoint: "wss://API_ID.execute-api.us-east-1.amazonaws.com/prod"

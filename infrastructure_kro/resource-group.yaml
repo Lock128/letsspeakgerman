@@ -1,0 +1,215 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGroup
+metadata:
+  name: user-admin-messaging-stack
+  namespace: default
+spec:
+  schema:
+    openAPIV3Schema:
+      type: object
+      properties:
+        environment:
+          type: string
+          default: "dev"
+        region:
+          type: string
+          default: "us-east-1"
+        retainResources:
+          type: boolean
+          default: false
+  resources:
+    # DynamoDB Table for WebSocket connections
+    - id: connections-table
+      template:
+        apiVersion: dynamodb.services.k8s.aws/v1alpha1
+        kind: Table
+        metadata:
+          name: "websocket-connections-{{ .environment }}"
+        spec:
+          tableName: "websocket-connections-{{ .environment }}"
+          attributeDefinitions:
+            - attributeName: connectionId
+              attributeType: S
+            - attributeName: connectionType
+              attributeType: S
+          keySchema:
+            - attributeName: connectionId
+              keyType: HASH
+          globalSecondaryIndexes:
+            - indexName: ConnectionTypeIndex
+              keySchema:
+                - attributeName: connectionType
+                  keyType: HASH
+              projection:
+                projectionType: ALL
+          billingMode: PAY_PER_REQUEST
+          timeToLiveSpecification:
+            attributeName: ttl
+            enabled: true
+          deletionPolicy: "{{ if .retainResources }}Retain{{ else }}Delete{{ end }}"
+
+    # Lambda function for connection management
+    - id: connection-manager-function
+      template:
+        apiVersion: lambda.services.k8s.aws/v1alpha1
+        kind: Function
+        metadata:
+          name: "connection-manager-{{ .environment }}"
+        spec:
+          functionName: "connection-manager-{{ .environment }}"
+          runtime: nodejs18.x
+          handler: connection-manager.handler
+          code:
+            zipFile: |
+              exports.handler = async (event) => {
+                console.log('Connection event:', JSON.stringify(event, null, 2));
+                return { statusCode: 200 };
+              };
+          environment:
+            variables:
+              CONNECTIONS_TABLE_NAME: "websocket-connections-{{ .environment }}"
+          role: "{{ .connectionManagerRoleArn }}"
+
+    # Lambda function for message handling
+    - id: message-handler-function
+      template:
+        apiVersion: lambda.services.k8s.aws/v1alpha1
+        kind: Function
+        metadata:
+          name: "message-handler-{{ .environment }}"
+        spec:
+          functionName: "message-handler-{{ .environment }}"
+          runtime: nodejs18.x
+          handler: message-handler.handler
+          code:
+            zipFile: |
+              exports.handler = async (event) => {
+                console.log('Message event:', JSON.stringify(event, null, 2));
+                return { statusCode: 200 };
+              };
+          environment:
+            variables:
+              CONNECTIONS_TABLE_NAME: "websocket-connections-{{ .environment }}"
+              WEBSOCKET_API_ENDPOINT: "{{ .websocketApiEndpoint }}"
+          role: "{{ .messageHandlerRoleArn }}"
+
+    # WebSocket API
+    - id: websocket-api
+      template:
+        apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
+        kind: API
+        metadata:
+          name: "websocket-api-{{ .environment }}"
+        spec:
+          name: "user-admin-messaging-websocket-{{ .environment }}"
+          description: "WebSocket API for real-time messaging between user and admin interfaces ({{ .environment }})"
+          protocolType: WEBSOCKET
+          routeSelectionExpression: "$request.body.action"
+
+    # WebSocket API Stage
+    - id: websocket-stage
+      template:
+        apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
+        kind: Stage
+        metadata:
+          name: "websocket-stage-{{ .environment }}"
+        spec:
+          apiRef:
+            from:
+              name: "websocket-api-{{ .environment }}"
+          stageName: prod
+          autoDeploy: true
+
+    # S3 bucket for user interface
+    - id: user-interface-bucket
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: "user-interface-bucket-{{ .environment }}"
+        spec:
+          name: "user-admin-messaging-user-{{ .environment }}-{{ .region }}"
+          publicAccessBlock:
+            blockPublicAcls: true
+            blockPublicPolicy: false
+            ignorePublicAcls: true
+            restrictPublicBuckets: false
+          websiteConfiguration:
+            indexDocument:
+              suffix: index.html
+            errorDocument:
+              key: error.html
+          deletionPolicy: "{{ if .retainResources }}Retain{{ else }}Delete{{ end }}"
+
+    # S3 bucket for admin interface
+    - id: admin-interface-bucket
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: "admin-interface-bucket-{{ .environment }}"
+        spec:
+          name: "user-admin-messaging-admin-{{ .environment }}-{{ .region }}"
+          publicAccessBlock:
+            blockPublicAcls: true
+            blockPublicPolicy: false
+            ignorePublicAcls: true
+            restrictPublicBuckets: false
+          websiteConfiguration:
+            indexDocument:
+              suffix: index.html
+            errorDocument:
+              key: error.html
+          deletionPolicy: "{{ if .retainResources }}Retain{{ else }}Delete{{ end }}"
+
+    # CloudFront Distribution
+    - id: cloudfront-distribution
+      template:
+        apiVersion: cloudfront.services.k8s.aws/v1alpha1
+        kind: Distribution
+        metadata:
+          name: "website-distribution-{{ .environment }}"
+        spec:
+          distributionConfig:
+            comment: "CloudFront distribution for user-admin messaging ({{ .environment }})"
+            defaultCacheBehavior:
+              targetOriginID: "user-interface-origin"
+              viewerProtocolPolicy: redirect-to-https
+              cachePolicyID: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingOptimized
+              compress: true
+            origins:
+              - id: "user-interface-origin"
+                domainName: "user-admin-messaging-user-{{ .environment }}-{{ .region }}.s3-website-{{ .region }}.amazonaws.com"
+                customOriginConfig:
+                  httpPort: 80
+                  httpsPort: 443
+                  originProtocolPolicy: http-only
+              - id: "admin-interface-origin"
+                domainName: "user-admin-messaging-admin-{{ .environment }}-{{ .region }}.s3-website-{{ .region }}.amazonaws.com"
+                customOriginConfig:
+                  httpPort: 80
+                  httpsPort: 443
+                  originProtocolPolicy: http-only
+            cacheBehaviors:
+              - pathPattern: "/admin/*"
+                targetOriginID: "admin-interface-origin"
+                viewerProtocolPolicy: redirect-to-https
+                cachePolicyID: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+                compress: true
+              - pathPattern: "/user/*"
+                targetOriginID: "user-interface-origin"
+                viewerProtocolPolicy: redirect-to-https
+                cachePolicyID: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+                compress: true
+            defaultRootObject: index.html
+            customErrorResponses:
+              - errorCode: 404
+                responseCode: 200
+                responsePagePath: "/index.html"
+                errorCachingMinTTL: 1800
+              - errorCode: 403
+                responseCode: 200
+                responsePagePath: "/index.html"
+                errorCachingMinTTL: 1800
+            enabled: true
+            priceClass: PriceClass_100

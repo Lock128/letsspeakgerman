@@ -1,0 +1,9 @@
+apiVersion: messaging.example.com/v1alpha1
+kind: UserAdminMessaging
+metadata:
+  name: user-admin-messaging-prod
+  namespace: default
+spec:
+  environment: prod
+  region: us-east-1
+  removalPolicy: Retain

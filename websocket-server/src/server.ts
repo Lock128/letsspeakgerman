@@ -195,43 +195,63 @@ class WebSocketServerApp {
   }
 
   private async handleSendMessage(ws: ExtendedWebSocket, messageData: MessageData): Promise<void> {
+    const content = messageData.data?.content || (messageData as any).content || '';
+    console.log(`Extracting content from message:`, { 
+      dataContent: messageData.data?.content, 
+      directContent: (messageData as any).content,
+      finalContent: content 
+    });
+    
     const message = {
-      content: messageData.data?.content || '',
+      messageId: uuidv4(),
+      content: content,
       timestamp: new Date().toISOString(),
       from: ws.connectionType || 'user',
       connectionId: ws.connectionId
     };
 
+    console.log(`Prepared message for broadcast:`, message);
+
     // Get admin connections from Redis
     const adminConnectionIds = await this.connectionManager.getConnections('admin');
-    console.log(`Broadcasting message to ${adminConnectionIds.length} admin connections`);
+    console.log(`Found ${adminConnectionIds.length} admin connections, sending to first available:`, adminConnectionIds);
 
     let successCount = 0;
     let failureCount = 0;
 
-    // Send message to all admin connections
+    // Send message to only the first available admin connection
     for (const adminConnectionId of adminConnectionIds) {
       const adminWs = this.connections.get(adminConnectionId);
+      console.log(`Checking admin connection ${adminConnectionId}:`, {
+        exists: !!adminWs,
+        readyState: adminWs?.readyState,
+        isOpen: adminWs?.readyState === WebSocket.OPEN
+      });
       
       if (adminWs && adminWs.readyState === WebSocket.OPEN) {
         try {
-          adminWs.send(JSON.stringify(message));
+          const messageJson = JSON.stringify(message);
+          console.log(`Sending to admin ${adminConnectionId}:`, messageJson);
+          adminWs.send(messageJson);
           successCount++;
-          console.log(`Message sent to admin connection: ${adminConnectionId}`);
+          console.log(`✅ Message sent successfully to admin connection: ${adminConnectionId}`);
+          break; // Only send to first available admin
         } catch (error) {
-          console.error(`Failed to send message to ${adminConnectionId}:`, error);
+          console.error(`❌ Failed to send message to ${adminConnectionId}:`, error);
           failureCount++;
           
-          // Remove stale connection
+          // Remove stale connection and try next admin
           await this.removeStaleConnection(adminConnectionId);
         }
       } else {
         // Connection not found locally or not open, remove from Redis
-        console.log(`Removing stale connection from Redis: ${adminConnectionId}`);
+        console.log(`❌ Removing stale connection from Redis: ${adminConnectionId}`);
         await this.removeStaleConnection(adminConnectionId);
         failureCount++;
       }
     }
+
+    console.log(`Message delivery completed: ${successCount} success, ${failureCount} failures`);
 
     // Send confirmation back to sender
     ws.send(JSON.stringify({

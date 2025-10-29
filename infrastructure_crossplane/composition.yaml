@@ -1,0 +1,282 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: user-admin-messaging
+  labels:
+    provider: aws
+    service: messaging
+spec:
+  compositeTypeRef:
+    apiVersion: messaging.example.com/v1alpha1
+    kind: XUserAdminMessaging
+  
+  resources:
+    # DynamoDB Table for WebSocket connections
+    - name: websocket-connections-table
+      base:
+        apiVersion: dynamodb.aws.crossplane.io/v1alpha1
+        kind: Table
+        spec:
+          forProvider:
+            region: us-east-1
+            billingMode: PAY_PER_REQUEST
+            attribute:
+              - name: connectionId
+                type: S
+              - name: connectionType
+                type: S
+            keySchema:
+              - attributeName: connectionId
+                keyType: HASH
+            globalSecondaryIndex:
+              - indexName: ConnectionTypeIndex
+                keySchema:
+                  - attributeName: connectionType
+                    keyType: HASH
+                projection:
+                  projectionType: ALL
+            timeToLiveSpecification:
+              attributeName: ttl
+              enabled: true
+            tags:
+              Environment: dev
+              Project: user-admin-messaging
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "websocket-connections-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.tags.Environment
+
+    # IAM Role for Lambda functions
+    - name: lambda-execution-role
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: Role
+        spec:
+          forProvider:
+            assumeRolePolicy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": "lambda.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                  }
+                ]
+              }
+            managedPolicyArns:
+              - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "lambda-execution-role-%s"
+
+    # IAM Policy for DynamoDB access
+    - name: dynamodb-policy
+      base:
+        apiVersion: iam.aws.crossplane.io/v1beta1
+        kind: Policy
+        spec:
+          forProvider:
+            policy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "dynamodb:GetItem",
+                      "dynamodb:PutItem",
+                      "dynamodb:UpdateItem",
+                      "dynamodb:DeleteItem",
+                      "dynamodb:Query",
+                      "dynamodb:Scan"
+                    ],
+                    "Resource": "*"
+                  }
+                ]
+              }
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "dynamodb-policy-%s"
+
+    # Connection Manager Lambda Function
+    - name: connection-manager-function
+      base:
+        apiVersion: lambda.aws.crossplane.io/v1beta1
+        kind: Function
+        spec:
+          forProvider:
+            region: us-east-1
+            runtime: nodejs18.x
+            handler: connection-manager.handler
+            code:
+              zipFile: |
+                exports.handler = async (event) => {
+                  console.log('Connection event:', JSON.stringify(event, null, 2));
+                  return { statusCode: 200 };
+                };
+            environment:
+              variables: {}
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "connection-manager-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: status.atProvider.arn
+          toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
+          fromFieldPath: metadata.annotations["crossplane.io/external-name"]
+
+    # Message Handler Lambda Function
+    - name: message-handler-function
+      base:
+        apiVersion: lambda.aws.crossplane.io/v1beta1
+        kind: Function
+        spec:
+          forProvider:
+            region: us-east-1
+            runtime: nodejs18.x
+            handler: message-handler.handler
+            code:
+              zipFile: |
+                exports.handler = async (event) => {
+                  console.log('Message event:', JSON.stringify(event, null, 2));
+                  return { statusCode: 200 };
+                };
+            environment:
+              variables: {}
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "message-handler-%s"
+
+    # WebSocket API Gateway
+    - name: websocket-api
+      base:
+        apiVersion: apigatewayv2.aws.crossplane.io/v1alpha1
+        kind: API
+        spec:
+          forProvider:
+            region: us-east-1
+            protocolType: WEBSOCKET
+            routeSelectionExpression: $request.body.action
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "websocket-api-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.name
+          transforms:
+            - type: string
+              string:
+                fmt: "user-admin-messaging-websocket-%s"
+
+    # S3 Bucket for User Interface
+    - name: user-interface-bucket
+      base:
+        apiVersion: s3.aws.crossplane.io/v1beta1
+        kind: Bucket
+        spec:
+          forProvider:
+            region: us-east-1
+            website:
+              - indexDocument: index.html
+                errorDocument: error.html
+            publicAccessBlock:
+              - blockPublicAcls: true
+                blockPublicPolicy: false
+                ignorePublicAcls: true
+                restrictPublicBuckets: false
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "user-interface-bucket-%s"
+
+    # S3 Bucket for Admin Interface
+    - name: admin-interface-bucket
+      base:
+        apiVersion: s3.aws.crossplane.io/v1beta1
+        kind: Bucket
+        spec:
+          forProvider:
+            region: us-east-1
+            website:
+              - indexDocument: index.html
+                errorDocument: error.html
+            publicAccessBlock:
+              - blockPublicAcls: true
+                blockPublicPolicy: false
+                ignorePublicAcls: true
+                restrictPublicBuckets: false
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "admin-interface-bucket-%s"
+
+    # CloudFront Distribution
+    - name: cloudfront-distribution
+      base:
+        apiVersion: cloudfront.aws.crossplane.io/v1alpha1
+        kind: Distribution
+        spec:
+          forProvider:
+            distributionConfig:
+              enabled: true
+              defaultRootObject: index.html
+              priceClass: PriceClass_100
+              customErrorResponse:
+                - errorCode: 404
+                  responseCode: 200
+                  responsePagePath: /index.html
+                  errorCachingMinTtl: 1800
+                - errorCode: 403
+                  responseCode: 200
+                  responsePagePath: /index.html
+                  errorCachingMinTtl: 1800
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "cloudfront-distribution-%s"

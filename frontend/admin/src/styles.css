@@ -116,6 +116,20 @@ main {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+}
+
+.message-header.new-message-alert {
+    animation: headerFlash 1s ease-out;
+}
+
+@keyframes headerFlash {
+    0%, 100% {
+        background: white;
+    }
+    50% {
+        background: #e8f5e8;
+    }
 }
 
 .message-header h2 {
@@ -170,7 +184,22 @@ main {
 .message-item.new {
     border-color: #3498db;
     background: #f8fbff;
-    animation: slideIn 0.3s ease-out, highlight 2s ease-out;
+    animation: slideIn 0.3s ease-out, highlight 2s ease-out, flash 0.5s ease-out;
+    position: relative;
+}
+
+.message-item.new::before {
+    content: 'NEW';
+    position: absolute;
+    top: -8px;
+    right: 8px;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    animation: fadeOut 3s ease-out forwards;
 }
 
 @keyframes slideIn {
@@ -192,6 +221,27 @@ main {
     100% {
         background: #f8fbff;
         border-color: #3498db;
+    }
+}
+
+@keyframes flash {
+    0%, 50%, 100% {
+        background: #f8fbff;
+    }
+    25%, 75% {
+        background: #fff3cd;
+        border-color: #ffc107;
+    }
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8);
     }
 }
 

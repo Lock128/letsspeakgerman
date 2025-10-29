@@ -1,0 +1,54 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xuseradminmessagings.messaging.example.com
+spec:
+  group: messaging.example.com
+  names:
+    kind: XUserAdminMessaging
+    plural: xuseradminmessagings
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              environment:
+                type: string
+                description: Environment name (dev, staging, prod)
+                enum: ["dev", "staging", "prod"]
+                default: "dev"
+              region:
+                type: string
+                description: AWS region
+                default: "us-east-1"
+              removalPolicy:
+                type: string
+                description: Resource removal policy
+                enum: ["Delete", "Retain"]
+                default: "Delete"
+            required:
+            - environment
+          status:
+            type: object
+            properties:
+              websocketUrl:
+                type: string
+                description: WebSocket API URL
+              userInterfaceUrl:
+                type: string
+                description: User interface URL
+              adminInterfaceUrl:
+                type: string
+                description: Admin interface URL
+              cloudfrontDomainName:
+                type: string
+                description: CloudFront distribution domain name
+  claimNames:
+    kind: UserAdminMessaging
+    plural: useradminmessagings

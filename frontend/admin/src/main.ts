@@ -33,6 +33,7 @@ const WebSocketAdapter = {
 
 // WebSocket client for admin interface
 interface Message {
+    messageId: string;
     content: string;
     timestamp: number;
     connectionId: string;
@@ -305,6 +306,7 @@ class AdminWebSocketClient {
         if (data.content && data.from === 'user') {
             // This is a user message that should be displayed
             const message: Message = {
+                messageId: data.messageId || 'unknown',
                 content: data.content,
                 timestamp: new Date(data.timestamp).getTime() || Date.now(),
                 connectionId: data.connectionId || 'unknown'
@@ -318,6 +320,8 @@ class AdminWebSocketClient {
         } else if (data.type === 'messageStatus') {
             // Message broadcast status
             console.log('📨 AdminWebSocketClient: Message status:', data);
+        } else if (data.action === 'pong') {
+            // Pong message - ignore (don't log to reduce noise)
         } else if (data.action === 'ping') {
             // Ping message - ignore
             console.log('📨 AdminWebSocketClient: Ping received');
@@ -347,7 +351,16 @@ class AdminWebSocketClient {
         messageElement.classList.add('new');
         setTimeout(() => {
             messageElement.classList.remove('new');
-        }, 2000);
+        }, 3000);
+        
+        // Flash the message header to draw attention
+        const messageHeader = document.querySelector('.message-header') as HTMLElement;
+        if (messageHeader) {
+            messageHeader.classList.add('new-message-alert');
+            setTimeout(() => {
+                messageHeader.classList.remove('new-message-alert');
+            }, 1000);
+        }
         
         // Scroll to top to show the new message
         this.messageList.scrollTop = 0;
@@ -367,7 +380,8 @@ class AdminWebSocketClient {
         messageDiv.innerHTML = `
             <div class="message-header-info">
                 <span class="message-timestamp">${dateString} ${timeString}</span>
-                <span class="message-id">ID: ${message.connectionId.substring(0, 8)}...</span>
+                <span class="message-id">Msg: ${message.messageId.substring(0, 8)}...</span>
+                <span class="connection-id">User: ${message.connectionId.substring(0, 8)}...</span>
             </div>
             <div class="message-content">${this.escapeHtml(message.content)}</div>
         `;

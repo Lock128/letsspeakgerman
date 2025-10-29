@@ -1,0 +1,88 @@
+# ACK Controllers Installation Guide
+# Run these commands to install the required ACK controllers
+
+# 1. Install ACK Controller for DynamoDB
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ack-system
+---
+# DynamoDB Controller
+# kubectl apply -f https://raw.githubusercontent.com/aws-controllers-k8s/dynamodb-controller/main/config/crd/bases/dynamodb.services.k8s.aws_tables.yaml
+# helm install ack-dynamodb-controller oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart --version=v1.2.10 --namespace ack-system
+
+---
+# Lambda Controller  
+# kubectl apply -f https://raw.githubusercontent.com/aws-controllers-k8s/lambda-controller/main/config/crd/bases/lambda.services.k8s.aws_functions.yaml
+# helm install ack-lambda-controller oci://public.ecr.aws/aws-controllers-k8s/lambda-chart --version=v1.4.2 --namespace ack-system
+
+---
+# API Gateway V2 Controller
+# kubectl apply -f https://raw.githubusercontent.com/aws-controllers-k8s/apigatewayv2-controller/main/config/crd/bases/apigatewayv2.services.k8s.aws_apis.yaml
+# helm install ack-apigatewayv2-controller oci://public.ecr.aws/aws-controllers-k8s/apigatewayv2-chart --version=v1.0.14 --namespace ack-system
+
+---
+# S3 Controller
+# kubectl apply -f https://raw.githubusercontent.com/aws-controllers-k8s/s3-controller/main/config/crd/bases/s3.services.k8s.aws_buckets.yaml
+# helm install ack-s3-controller oci://public.ecr.aws/aws-controllers-k8s/s3-chart --version=v1.0.13 --namespace ack-system
+
+---
+# CloudFront Controller
+# kubectl apply -f https://raw.githubusercontent.com/aws-controllers-k8s/cloudfront-controller/main/config/crd/bases/cloudfront.services.k8s.aws_distributions.yaml
+# helm install ack-cloudfront-controller oci://public.ecr.aws/aws-controllers-k8s/cloudfront-chart --version=v1.2.11 --namespace ack-system
+
+---
+# IAM Controller
+# kubectl apply -f https://raw.githubusercontent.com/aws-controllers-k8s/iam-controller/main/config/crd/bases/iam.services.k8s.aws_roles.yaml
+# helm install ack-iam-controller oci://public.ecr.aws/aws-controllers-k8s/iam-chart --version=v1.3.8 --namespace ack-system
+
+---
+# Service Account for ACK Controllers
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ack-service-account
+  namespace: ack-system
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/ack-controller-role
+---
+# ClusterRole for ACK Controllers
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ack-controller-role
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["dynamodb.services.k8s.aws"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["lambda.services.k8s.aws"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apigatewayv2.services.k8s.aws"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["s3.services.k8s.aws"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["cloudfront.services.k8s.aws"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["iam.services.k8s.aws"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ack-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ack-controller-role
+subjects:
+- kind: ServiceAccount
+  name: ack-service-account
+  namespace: ack-system
