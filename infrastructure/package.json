@@ -1,0 +1,44 @@
+{
+  "name": "user-admin-messaging-infrastructure",
+  "version": "1.0.0",
+  "description": "AWS CDK infrastructure for user-admin messaging application",
+  "main": "lib/app.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "synth:dev": "cdk synth --context environment=dev",
+    "synth:staging": "cdk synth --context environment=staging",
+    "synth:prod": "cdk synth --context environment=prod",
+    "deploy": "cdk deploy --context environment=dev",
+    "deploy:dev": "cdk deploy --context environment=dev --require-approval never",
+    "deploy:staging": "cdk deploy --context environment=staging --require-approval broadening",
+    "deploy:prod": "cdk deploy --context environment=prod --require-approval broadening",
+    "destroy": "cdk destroy --context environment=dev",
+    "destroy:dev": "cdk destroy --context environment=dev --force",
+    "destroy:staging": "cdk destroy --context environment=staging",
+    "destroy:prod": "cdk destroy --context environment=prod",
+    "diff": "cdk diff --context environment=dev",
+    "diff:dev": "cdk diff --context environment=dev",
+    "diff:staging": "cdk diff --context environment=staging",
+    "diff:prod": "cdk diff --context environment=prod",
+    "bootstrap": "cdk bootstrap",
+    "bootstrap:dev": "cdk bootstrap --context environment=dev",
+    "bootstrap:staging": "cdk bootstrap --context environment=staging",
+    "bootstrap:prod": "cdk bootstrap --context environment=prod"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.19.130",
+    "aws-cdk": "^2.80.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.80.0",
+    "constructs": "^10.0.0"
+  }
+}

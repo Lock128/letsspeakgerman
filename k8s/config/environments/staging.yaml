@@ -1,0 +1,55 @@
+# Staging Environment Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-staging
+  labels:
+    app: user-admin-messaging
+    component: config
+    environment: staging
+data:
+  # Redis configuration for staging
+  redis-url: "redis://redis-service:6379"
+  redis-host: "redis-service"
+  redis-port: "6379"
+  
+  # WebSocket configuration for staging
+  websocket-endpoint: "wss://staging-messaging.example.com/ws"
+  websocket-port: "8080"
+  health-port: "8081"
+  
+  # Application configuration for staging
+  deployment-mode: "kubernetes"
+  log-level: "info"
+  
+  # Frontend configuration for staging
+  api-base-url: "https://staging-messaging.example.com"
+  websocket-reconnect-interval: "4000"
+  websocket-max-retries: "7"
+  
+  # Performance configuration for staging
+  connection-timeout: "20000"
+  message-timeout: "3000"
+  max-connections-per-pod: "500"
+  
+  # Environment-specific settings
+  environment: "staging"
+  debug: "false"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets-staging
+  labels:
+    app: user-admin-messaging
+    component: config
+    environment: staging
+type: Opaque
+data:
+  # Staging Redis password (base64 encoded)
+  # Replace with actual staging password
+  redis-password: c3RhZ2luZ3Bhc3N3b3Jk  # stagingpassword
+  
+  # Staging JWT secret (base64 encoded)
+  # Replace with actual staging JWT secret
+  jwt-secret: c3RhZ2luZ19qd3Rfc2VjcmV0  # staging_jwt_secret

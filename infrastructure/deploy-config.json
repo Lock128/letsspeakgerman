@@ -1,0 +1,39 @@
+{
+  "environments": {
+    "dev": {
+      "description": "Development environment for testing and development",
+      "requireApproval": "never",
+      "autoDeleteObjects": true,
+      "removalPolicy": "destroy",
+      "tags": {
+        "Environment": "dev",
+        "Project": "user-admin-messaging",
+        "Owner": "development-team"
+      }
+    },
+    "staging": {
+      "description": "Staging environment for pre-production testing",
+      "requireApproval": "broadening",
+      "autoDeleteObjects": false,
+      "removalPolicy": "retain",
+      "tags": {
+        "Environment": "staging",
+        "Project": "user-admin-messaging",
+        "Owner": "qa-team"
+      }
+    },
+    "prod": {
+      "description": "Production environment for live application",
+      "requireApproval": "broadening",
+      "autoDeleteObjects": false,
+      "removalPolicy": "retain",
+      "tags": {
+        "Environment": "prod",
+        "Project": "user-admin-messaging",
+        "Owner": "operations-team"
+      }
+    }
+  },
+  "defaultRegion": "us-east-1",
+  "stackNamePrefix": "UserAdminMessaging"
+}

@@ -1,0 +1,52 @@
+# Development overrides for docker-compose.yml
+# This file is automatically loaded by docker-compose and provides
+# development-specific configurations
+
+services:
+  # Development overrides for WebSocket service
+  websocket:
+    environment:
+      - NODE_ENV=development
+      - DEBUG=websocket:*
+      - LOG_LEVEL=debug
+    volumes:
+      # Mount source code for development (if using nodemon)
+      - ./websocket-server/src:/app/src:ro
+    # Enable development debugging
+    command: ["node", "--inspect=0.0.0.0:9229", "dist/server.js"]
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "9229:9229"  # Debug port
+
+  # Development overrides for user frontend
+  user-frontend:
+    environment:
+      - NODE_ENV=development
+    # Mount source for live reload (if needed)
+    volumes:
+      - ./frontend/user/src:/app/frontend/user/src:ro
+
+  # Development overrides for admin frontend
+  admin-frontend:
+    environment:
+      - NODE_ENV=development
+    # Mount source for live reload (if needed)
+    volumes:
+      - ./frontend/admin/src:/app/frontend/admin/src:ro
+
+  # Redis with development settings
+  redis:
+    environment:
+      - REDIS_PASSWORD=
+    # Expose Redis port for development tools
+    ports:
+      - "6379:6379"
+    # Enable Redis logging for development
+    command: redis-server --appendonly yes --loglevel verbose
+
+  # Development Nginx with additional logging
+  nginx:
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx-dev.conf:/etc/nginx/conf.d/default.conf:ro

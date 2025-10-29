@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+lib/
+*.js
+*.js.map
+*.d.ts
+
+# CDK
+cdk.out/
+.cdk.staging/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+.tmp/
+temp/
+
+# AWS
+.aws/
+
+# Exclude compiled JavaScript files but keep config files
+!jest.config.js
+!*.config.js

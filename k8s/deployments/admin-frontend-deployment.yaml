@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-frontend-service
+  labels:
+    app: admin-frontend-service
+    component: frontend
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: admin-frontend-service
+  template:
+    metadata:
+      labels:
+        app: admin-frontend-service
+        component: frontend
+        version: v1
+    spec:
+      containers:
+      - name: admin-frontend
+        image: user-admin-messaging/admin-frontend:latest
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        env:
+        - name: DEPLOYMENT_MODE
+          value: "kubernetes"
+        - name: WEBSOCKET_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: websocket-endpoint
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

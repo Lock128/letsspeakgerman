@@ -1,0 +1,57 @@
+# Node modules
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+*/dist/
+*.tsbuildinfo
+*/lib/
+infrastructure/cdk.out/
+
+# Test files
+**/*.test.ts
+**/*.test.js
+coverage/
+.nyc_output/
+
+# Development files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+DEPLOYMENT*.md
+PROJECT_STRUCTURE.md
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+
+# Scripts (except build scripts)
+scripts/
+
+# Kiro specs
+.kiro/

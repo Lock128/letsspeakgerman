@@ -1,0 +1,70 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: user-admin-messaging-ingress
+  labels:
+    app: user-admin-messaging
+  annotations:
+    # Enable WebSocket support
+    nginx.ingress.kubernetes.io/websocket-services: "websocket-service"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Enable CORS for frontend applications
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    # SSL redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - messaging.example.com
+    secretName: messaging-tls-secret
+  rules:
+  - host: messaging.example.com
+    http:
+      paths:
+      # User frontend application
+      - path: /user
+        pathType: Prefix
+        backend:
+          service:
+            name: user-frontend-service
+            port:
+              number: 80
+      # Admin frontend application
+      - path: /admin
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-frontend-service
+            port:
+              number: 80
+      # WebSocket endpoint
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: websocket-service
+            port:
+              number: 8080
+      # Health check endpoint
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: websocket-service
+            port:
+              number: 8081
+      # Default route to user frontend
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: user-frontend-service
+            port:
+              number: 80

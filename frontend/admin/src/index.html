@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Interface - Message Monitor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Admin Message Monitor</h1>
+            <p>Real-time messages from user interface</p>
+            
+            <div id="connectionStatus" class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </header>
+        
+        <main>
+            <div class="message-panel">
+                <div class="message-header">
+                    <h2>Incoming Messages</h2>
+                    <div class="message-count">
+                        <span id="messageCount">0</span> messages received
+                    </div>
+                </div>
+                
+                <div id="messageList" class="message-list">
+                    <div class="no-messages">
+                        <p>No messages received yet</p>
+                        <p class="subtitle">Messages will appear here in real-time</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Real-time messaging system - Admin Dashboard</p>
+        </footer>
+    </div>
+    
+    <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "user-admin-messaging-user-frontend",
+  "version": "1.0.0",
+  "description": "User interface for user-admin messaging application",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run clean && npm run compile && npm run copy-assets",
+    "compile": "tsc",
+    "copy-assets": "cp src/*.html dist/ && cp src/*.css dist/",
+    "watch": "tsc -w",
+    "test": "jest",
+    "clean": "rm -rf dist",
+    "serve": "python3 -m http.server 8000 --directory dist",
+    "deploy": "npm run build && node ../scripts/deploy-frontend.js user",
+    "deploy:dev": "npm run build && node ../scripts/deploy-frontend.js user dev",
+    "deploy:staging": "npm run build && node ../scripts/deploy-frontend.js user staging",
+    "deploy:prod": "npm run build && node ../scripts/deploy-frontend.js user prod"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.15.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "user-admin-messaging-shared-config": "workspace:*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
