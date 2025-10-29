@@ -13,19 +13,19 @@ const stackName = `UserAdminMessaging-${environment}`;
 const envConfig = {
   dev: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+    region: process.env.CDK_DEFAULT_REGION || 'eu-central-1',
     removalPolicy: cdk.RemovalPolicy.DESTROY,
     autoDeleteObjects: true,
   },
   staging: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+    region: process.env.CDK_DEFAULT_REGION || 'eu-central-1',
     removalPolicy: cdk.RemovalPolicy.RETAIN,
     autoDeleteObjects: false,
   },
   prod: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+    region: process.env.CDK_DEFAULT_REGION || 'eu-central-1',
     removalPolicy: cdk.RemovalPolicy.RETAIN,
     autoDeleteObjects: false,
   },

@@ -13,7 +13,7 @@ spec:
           default: "dev"
         region:
           type: string
-          default: "us-east-1"
+          default: "eu-central-1"
         retainResources:
           type: boolean
           default: false

@@ -129,7 +129,7 @@ Extends base configuration with:
 ### AWS-Specific Variables
 - `CONNECTIONS_TABLE_NAME`: DynamoDB table name (default: websocket-connections)
 - `WEBSOCKET_API_ENDPOINT`: API Gateway WebSocket endpoint
-- `AWS_REGION`: AWS region (default: us-east-1)
+- `AWS_REGION`: AWS region (default: eu-central-1)
 
 ### Kubernetes-Specific Variables
 - `REDIS_URL`: Redis connection URL (default: redis://redis-service:6379)

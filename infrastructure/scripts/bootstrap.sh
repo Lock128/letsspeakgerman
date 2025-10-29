@@ -56,7 +56,7 @@ if [[ -z "$ACCOUNT" ]]; then
 fi
 
 if [[ -z "$REGION" ]]; then
-  REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
+  REGION=$(aws configure get region 2>/dev/null || echo "eu-central-1")
 fi
 
 if [[ -z "$ACCOUNT" ]]; then

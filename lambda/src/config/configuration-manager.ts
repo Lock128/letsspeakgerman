@@ -127,7 +127,7 @@ export class ConfigurationManager {
       ...baseConfig,
       dynamoDbTableName: this.getEnvVar('CONNECTIONS_TABLE_NAME', 'websocket-connections'),
       apiGatewayEndpoint: process.env.WEBSOCKET_API_ENDPOINT,
-      region: environmentInfo.region || this.getEnvVar('AWS_REGION', 'us-east-1')
+      region: environmentInfo.region || this.getEnvVar('AWS_REGION', 'eu-central-1')
     };
   }
 

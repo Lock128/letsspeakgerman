@@ -7,8 +7,8 @@ spec:
   resourceGroup: user-admin-messaging-stack
   values:
     environment: "prod"
-    region: "us-east-1"
+    region: "eu-central-1"
     retainResources: true
     connectionManagerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
     messageHandlerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
-    websocketApiEndpoint: "wss://API_ID.execute-api.us-east-1.amazonaws.com/prod"
+    websocketApiEndpoint: "wss://API_ID.execute-api.eu-central-1.amazonaws.com/prod"

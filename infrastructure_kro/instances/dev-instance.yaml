@@ -5,11 +5,11 @@ metadata:
   namespace: default
 data:
   environment: "dev"
-  region: "us-east-1"
+  region: "eu-central-1"
   retainResources: "false"
   connectionManagerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
   messageHandlerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
-  websocketApiEndpoint: "wss://API_ID.execute-api.us-east-1.amazonaws.com/prod"
+  websocketApiEndpoint: "wss://API_ID.execute-api.eu-central-1.amazonaws.com/prod"
 ---
 apiVersion: kro.run/v1alpha1
 kind: ResourceGroupInstance
@@ -20,8 +20,8 @@ spec:
   resourceGroup: user-admin-messaging-stack
   values:
     environment: "dev"
-    region: "us-east-1"
+    region: "eu-central-1"
     retainResources: false
     connectionManagerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
     messageHandlerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
-    websocketApiEndpoint: "wss://API_ID.execute-api.us-east-1.amazonaws.com/prod"
+    websocketApiEndpoint: "wss://API_ID.execute-api.eu-central-1.amazonaws.com/prod"

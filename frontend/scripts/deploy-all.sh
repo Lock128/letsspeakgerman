@@ -47,7 +47,9 @@ echo ""
 # Build if not skipped
 if [[ "$SKIP_BUILD" == false ]]; then
   echo "🔨 Building frontend applications..."
-  ./scripts/build-all.sh
+  # Get the directory where this script is located
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  "$SCRIPT_DIR/build-all.sh"
   echo ""
 fi
 

@@ -1,0 +1,16 @@
+{
+  "UserAdminMessaging-dev": {
+    "environment": "dev",
+    "stackName": "UserAdminMessaging-dev",
+    "timestamp": "2025-10-29T21:49:39.377Z",
+    "CloudFrontDistributionDomainName": "drm7z573qqoa2.cloudfront.net",
+    "WebSocketUrl": "wss://lpoon64z0m.execute-api.eu-central-1.amazonaws.com/prod",
+    "CloudFrontDistributionUrl": "https://drm7z573qqoa2.cloudfront.net",
+    "UserInterfaceUrl": "https://drm7z573qqoa2.cloudfront.net/user/",
+    "UserInterfaceBucketName": "user-admin-messaging-user-dev-916032256060-eu-central-1",
+    "UserInterfaceWebsiteUrl": "http://user-admin-messaging-user-dev-916032256060-eu-central-1.s3-website.eu-central-1.amazonaws.com",
+    "AdminInterfaceBucketName": "user-admin-messaging-admin-dev-916032256060-eu-central-1",
+    "AdminInterfaceWebsiteUrl": "http://user-admin-messaging-admin-dev-916032256060-eu-central-1.s3-website.eu-central-1.amazonaws.com",
+    "AdminInterfaceUrl": "https://drm7z573qqoa2.cloudfront.net/admin/"
+  }
+}

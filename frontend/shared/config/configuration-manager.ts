@@ -124,7 +124,7 @@ export class FrontendConfigurationManager {
       ...baseConfig,
       webSocketUrl: this.getConfigValue('WEBSOCKET_URL', 'wss://your-api-gateway-id.execute-api.region.amazonaws.com/prod'),
       apiGatewayEndpoint: this.getConfigValue('API_GATEWAY_ENDPOINT'),
-      region: this.getConfigValue('AWS_REGION', 'us-east-1')
+      region: this.getConfigValue('AWS_REGION', 'eu-central-1')
     };
   }
 

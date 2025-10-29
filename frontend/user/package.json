@@ -24,7 +24,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "user-admin-messaging-shared-config": "workspace:*"
+    "user-admin-messaging-shared-config": "file:../shared"
   },
   "engines": {
     "node": ">=18.0.0"

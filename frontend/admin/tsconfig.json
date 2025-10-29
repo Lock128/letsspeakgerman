@@ -23,6 +23,6 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node"
   },
-  "include": ["src/**/*", "../shared/config/**/*"],
-  "exclude": ["dist", "node_modules", "**/*.test.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "**/*.test.ts", "../shared/config/**/*"]
 }

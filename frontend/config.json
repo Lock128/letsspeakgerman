@@ -1,5 +1,5 @@
 {
   "environment": "dev",
-  "webSocketUrl": "wss://your-api-gateway-id.execute-api.region.amazonaws.com/prod",
-  "timestamp": "2025-10-29T07:23:55.409Z"
+  "webSocketUrl": "wss://lpoon64z0m.execute-api.eu-central-1.amazonaws.com/prod",
+  "timestamp": "2025-10-29T21:49:39.858Z"
 }
