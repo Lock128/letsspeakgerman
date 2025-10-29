@@ -58,7 +58,7 @@ export class UserAdminMessagingStack extends cdk.Stack {
 
     // Lambda function for connection management
     const connectionManagerFunction = new lambda.Function(this, 'ConnectionManagerFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'connection-manager.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda/dist')),
       environment: {
@@ -68,7 +68,7 @@ export class UserAdminMessagingStack extends cdk.Stack {
 
     // Lambda function for message handling
     const messageHandlerFunction = new lambda.Function(this, 'MessageHandlerFunction', {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'message-handler.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda/dist')),
       environment: {
@@ -124,16 +124,7 @@ export class UserAdminMessagingStack extends cdk.Stack {
       autoDeleteObjects,
     });
 
-    // S3 bucket for admin interface
-    const adminInterfaceBucket = new s3.Bucket(this, 'AdminInterfaceBucket', {
-      bucketName: `user-admin-messaging-admin-${environment}-${this.account}-${this.region}`,
-      websiteIndexDocument: 'index.html',
-      websiteErrorDocument: 'error.html',
-      publicReadAccess: true,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
-      removalPolicy,
-      autoDeleteObjects,
-    });
+
 
     // Output S3 bucket names and website URLs
     new cdk.CfnOutput(this, 'UserInterfaceBucketName', {
@@ -141,39 +132,17 @@ export class UserAdminMessagingStack extends cdk.Stack {
       description: 'S3 bucket name for user interface',
     });
 
-    new cdk.CfnOutput(this, 'AdminInterfaceBucketName', {
-      value: adminInterfaceBucket.bucketName,
-      description: 'S3 bucket name for admin interface',
-    });
-
     new cdk.CfnOutput(this, 'UserInterfaceWebsiteUrl', {
       value: userInterfaceBucket.bucketWebsiteUrl,
       description: 'S3 website URL for user interface',
     });
 
-    new cdk.CfnOutput(this, 'AdminInterfaceWebsiteUrl', {
-      value: adminInterfaceBucket.bucketWebsiteUrl,
-      description: 'S3 website URL for admin interface',
-    });
-
-    // CloudFront distribution with multiple origins
+    // CloudFront distribution with single origin
     const distribution = new cloudfront.Distribution(this, 'WebsiteDistribution', {
       defaultBehavior: {
         origin: new origins.S3StaticWebsiteOrigin(userInterfaceBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-      },
-      additionalBehaviors: {
-        '/admin/*': {
-          origin: new origins.S3StaticWebsiteOrigin(adminInterfaceBucket),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-        },
-        '/user/*': {
-          origin: new origins.S3StaticWebsiteOrigin(userInterfaceBucket),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
-        },
       },
       defaultRootObject: 'index.html',
       errorResponses: [

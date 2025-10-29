@@ -1,9 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as AWS from 'aws-sdk';
+import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
 import { createConnectionManager } from './connection';
 
 const connectionManager = createConnectionManager();
-const apigateway = new AWS.ApiGatewayManagementApi({
+const apigateway = new ApiGatewayManagementApiClient({
   endpoint: process.env.WEBSOCKET_API_ENDPOINT,
 });
 
@@ -47,10 +47,10 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       // Send message to all admin connections
       const sendPromises = adminConnectionIds.map(async (adminConnectionId: string) => {
         try {
-          await apigateway.postToConnection({
+          await apigateway.send(new PostToConnectionCommand({
             ConnectionId: adminConnectionId,
             Data: JSON.stringify(message),
-          }).promise();
+          }));
           console.log(`Message sent to admin connection: ${adminConnectionId}`);
         } catch (error: any) {
           console.error(`Failed to send message to ${adminConnectionId}:`, error);

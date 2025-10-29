@@ -86,11 +86,7 @@ echo ""
 # Step 4: Build and deploy frontend
 if [[ "$SKIP_FRONTEND" == false ]]; then
   echo "📦 Step 4: Building and deploying frontend..."
-  if [[ "$SKIP_BUILD" == true ]]; then
-    npm run deploy:frontend:$ENVIRONMENT -- --skip-build
-  else
-    npm run deploy:frontend:$ENVIRONMENT
-  fi
+  npm run deploy:frontend:simple:$ENVIRONMENT
   echo "✅ Frontend deployed successfully"
   echo ""
 fi

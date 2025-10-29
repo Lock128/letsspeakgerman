@@ -3,17 +3,19 @@
  * Implements connection management using AWS DynamoDB for Lambda environments
  */
 
-import * as AWS from 'aws-sdk';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, DeleteCommand, ScanCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { ConnectionManager, ConnectionMetadata } from './connection-manager-interface';
 import { ConfigurationAdapterFactory } from '../config/configuration-adapter';
 
 export class DynamoDBConnectionManager implements ConnectionManager {
-  private dynamodb: AWS.DynamoDB.DocumentClient;
+  private dynamodb: DynamoDBDocumentClient;
   private tableName: string;
   private ttl: number;
 
   constructor() {
-    this.dynamodb = new AWS.DynamoDB.DocumentClient();
+    const client = new DynamoDBClient({});
+    this.dynamodb = DynamoDBDocumentClient.from(client);
     
     const adapter = ConfigurationAdapterFactory.createAdapter();
     const storageConfig = adapter.getStorageConfig();
@@ -39,10 +41,10 @@ export class DynamoDBConnectionManager implements ConnectionManager {
     };
 
     try {
-      await this.dynamodb.put({
+      await this.dynamodb.send(new PutCommand({
         TableName: this.tableName,
         Item: item,
-      }).promise();
+      }));
 
       console.log(`Connection ${connectionId} stored in DynamoDB with type: ${connectionType}`);
     } catch (error) {
@@ -53,10 +55,10 @@ export class DynamoDBConnectionManager implements ConnectionManager {
 
   async removeConnection(connectionId: string): Promise<void> {
     try {
-      await this.dynamodb.delete({
+      await this.dynamodb.send(new DeleteCommand({
         TableName: this.tableName,
         Key: { connectionId },
-      }).promise();
+      }));
 
       console.log(`Connection ${connectionId} removed from DynamoDB`);
     } catch (error) {
@@ -67,14 +69,14 @@ export class DynamoDBConnectionManager implements ConnectionManager {
 
   async getConnections(connectionType: 'user' | 'admin'): Promise<string[]> {
     try {
-      const result = await this.dynamodb.scan({
+      const result = await this.dynamodb.send(new ScanCommand({
         TableName: this.tableName,
         FilterExpression: 'connectionType = :type',
         ExpressionAttributeValues: {
           ':type': connectionType,
         },
         ProjectionExpression: 'connectionId',
-      }).promise();
+      }));
 
       return (result.Items || []).map(item => item.connectionId);
     } catch (error) {
@@ -85,10 +87,10 @@ export class DynamoDBConnectionManager implements ConnectionManager {
 
   async getConnectionMetadata(connectionId: string): Promise<ConnectionMetadata | null> {
     try {
-      const result = await this.dynamodb.get({
+      const result = await this.dynamodb.send(new GetCommand({
         TableName: this.tableName,
         Key: { connectionId },
-      }).promise();
+      }));
 
       if (!result.Item) {
         return null;
@@ -108,14 +110,14 @@ export class DynamoDBConnectionManager implements ConnectionManager {
 
   async updateConnectionType(connectionId: string, connectionType: 'user' | 'admin'): Promise<void> {
     try {
-      await this.dynamodb.update({
+      await this.dynamodb.send(new UpdateCommand({
         TableName: this.tableName,
         Key: { connectionId },
         UpdateExpression: 'SET connectionType = :type',
         ExpressionAttributeValues: {
           ':type': connectionType,
         },
-      }).promise();
+      }));
 
       console.log(`Connection ${connectionId} type updated to: ${connectionType}`);
     } catch (error) {
@@ -126,11 +128,11 @@ export class DynamoDBConnectionManager implements ConnectionManager {
 
   async connectionExists(connectionId: string): Promise<boolean> {
     try {
-      const result = await this.dynamodb.get({
+      const result = await this.dynamodb.send(new GetCommand({
         TableName: this.tableName,
         Key: { connectionId },
         ProjectionExpression: 'connectionId',
-      }).promise();
+      }));
 
       return !!result.Item;
     } catch (error) {
@@ -144,7 +146,7 @@ export class DynamoDBConnectionManager implements ConnectionManager {
     const currentTime = Math.floor(Date.now() / 1000);
     
     try {
-      const result = await this.dynamodb.scan({
+      const result = await this.dynamodb.send(new ScanCommand({
         TableName: this.tableName,
         FilterExpression: 'attribute_exists(#ttl) AND #ttl < :currentTime',
         ExpressionAttributeNames: {
@@ -154,7 +156,7 @@ export class DynamoDBConnectionManager implements ConnectionManager {
           ':currentTime': currentTime,
         },
         ProjectionExpression: 'connectionId',
-      }).promise();
+      }));
 
       const expiredConnections = result.Items || [];
       
@@ -162,10 +164,10 @@ export class DynamoDBConnectionManager implements ConnectionManager {
         console.log(`Found ${expiredConnections.length} expired connections to clean up`);
         
         const deletePromises = expiredConnections.map(item =>
-          this.dynamodb.delete({
+          this.dynamodb.send(new DeleteCommand({
             TableName: this.tableName,
             Key: { connectionId: item.connectionId },
-          }).promise()
+          }))
         );
 
         await Promise.all(deletePromises);
