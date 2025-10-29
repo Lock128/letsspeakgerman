@@ -2,7 +2,7 @@
   "UserAdminMessaging-dev": {
     "environment": "dev",
     "stackName": "UserAdminMessaging-dev",
-    "timestamp": "2025-10-29T21:49:39.377Z",
+    "timestamp": "2025-10-29T22:04:11.891Z",
     "CloudFrontDistributionDomainName": "drm7z573qqoa2.cloudfront.net",
     "WebSocketUrl": "wss://lpoon64z0m.execute-api.eu-central-1.amazonaws.com/prod",
     "CloudFrontDistributionUrl": "https://drm7z573qqoa2.cloudfront.net",
