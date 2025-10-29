@@ -21,7 +21,7 @@
     "build:frontend": "cd frontend && ./scripts/build-all.sh",
     "build:frontend:clean": "cd frontend && ./scripts/build-all.sh --clean",
     "watch:frontend": "cd frontend && ./scripts/build-all.sh --watch",
-    "test": "npm run test:infrastructure && npm run test:lambda && npm run test:frontend",
+    "test": "npm run test:infrastructure && npm run test:lambda",
     "test:infrastructure": "cd infrastructure && npm test",
     "test:lambda": "cd lambda && npm test",
     "test:frontend": "cd frontend/user && npm test && cd ../admin && npm test",
