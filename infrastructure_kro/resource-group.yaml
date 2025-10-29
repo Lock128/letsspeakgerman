@@ -57,7 +57,7 @@ spec:
           name: "connection-manager-{{ .environment }}"
         spec:
           functionName: "connection-manager-{{ .environment }}"
-          runtime: nodejs18.x
+          runtime: nodejs22.x
           handler: connection-manager.handler
           code:
             zipFile: |
@@ -79,7 +79,7 @@ spec:
           name: "message-handler-{{ .environment }}"
         spec:
           functionName: "message-handler-{{ .environment }}"
-          runtime: nodejs18.x
+          runtime: nodejs22.x
           handler: message-handler.handler
           code:
             zipFile: |
@@ -141,27 +141,6 @@ spec:
               key: error.html
           deletionPolicy: "{{ if .retainResources }}Retain{{ else }}Delete{{ end }}"
 
-    # S3 bucket for admin interface
-    - id: admin-interface-bucket
-      template:
-        apiVersion: s3.services.k8s.aws/v1alpha1
-        kind: Bucket
-        metadata:
-          name: "admin-interface-bucket-{{ .environment }}"
-        spec:
-          name: "user-admin-messaging-admin-{{ .environment }}-{{ .region }}"
-          publicAccessBlock:
-            blockPublicAcls: true
-            blockPublicPolicy: false
-            ignorePublicAcls: true
-            restrictPublicBuckets: false
-          websiteConfiguration:
-            indexDocument:
-              suffix: index.html
-            errorDocument:
-              key: error.html
-          deletionPolicy: "{{ if .retainResources }}Retain{{ else }}Delete{{ end }}"
-
     # CloudFront Distribution
     - id: cloudfront-distribution
       template:
@@ -184,23 +163,6 @@ spec:
                   httpPort: 80
                   httpsPort: 443
                   originProtocolPolicy: http-only
-              - id: "admin-interface-origin"
-                domainName: "user-admin-messaging-admin-{{ .environment }}-{{ .region }}.s3-website-{{ .region }}.amazonaws.com"
-                customOriginConfig:
-                  httpPort: 80
-                  httpsPort: 443
-                  originProtocolPolicy: http-only
-            cacheBehaviors:
-              - pathPattern: "/admin/*"
-                targetOriginID: "admin-interface-origin"
-                viewerProtocolPolicy: redirect-to-https
-                cachePolicyID: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-                compress: true
-              - pathPattern: "/user/*"
-                targetOriginID: "user-interface-origin"
-                viewerProtocolPolicy: redirect-to-https
-                cachePolicyID: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-                compress: true
             defaultRootObject: index.html
             customErrorResponses:
               - errorCode: 404

@@ -1,9 +1,9 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
-  name: xuseradminmessagings.messaging.example.com
+  name: xuseradminmessagings.clc.lockhead.cloud
 spec:
-  group: messaging.example.com
+  group: clc.lockhead.cloud
   names:
     kind: XUserAdminMessaging
     plural: xuseradminmessagings

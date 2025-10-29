@@ -26,4 +26,4 @@ data:
 #     name: letsencrypt-prod
 #     kind: ClusterIssuer
 #   dnsNames:
-#   - messaging.example.com
+#   - clc.lockhead.cloud

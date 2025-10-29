@@ -14,7 +14,7 @@ data:
   redis-port: "6379"
   
   # WebSocket configuration for staging
-  websocket-endpoint: "wss://staging-messaging.example.com/ws"
+  websocket-endpoint: "wss://staging-clc.lockhead.cloud/ws"
   websocket-port: "8080"
   health-port: "8081"
   
@@ -23,7 +23,7 @@ data:
   log-level: "info"
   
   # Frontend configuration for staging
-  api-base-url: "https://staging-messaging.example.com"
+  api-base-url: "https://staging-clc.lockhead.cloud"
   websocket-reconnect-interval: "4000"
   websocket-max-retries: "7"
   

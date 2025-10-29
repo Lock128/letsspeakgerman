@@ -1,4 +1,4 @@
-apiVersion: messaging.example.com/v1alpha1
+apiVersion: clc.lockhead.cloud/v1alpha1
 kind: UserAdminMessaging
 metadata:
   name: user-admin-messaging-dev

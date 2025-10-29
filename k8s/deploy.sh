@@ -136,10 +136,10 @@ if [ "$DRY_RUN" = false ]; then
     
     echo ""
     print_status "To access the application:"
-    echo "  User Interface: https://messaging.example.com/user"
-    echo "  Admin Interface: https://messaging.example.com/admin"
-    echo "  WebSocket Endpoint: wss://messaging.example.com/ws"
-    echo "  Health Check: https://messaging.example.com/health"
+    echo "  User Interface: https://clc.lockhead.cloud/user"
+    echo "  Admin Interface: https://clc.lockhead.cloud/admin"
+    echo "  WebSocket Endpoint: wss://clc.lockhead.cloud/ws"
+    echo "  Health Check: https://clc.lockhead.cloud/health"
 else
     print_status "Dry run completed successfully!"
 fi

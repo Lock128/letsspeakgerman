@@ -14,7 +14,7 @@ data:
   redis-port: "6379"
   
   # WebSocket configuration for production
-  websocket-endpoint: "wss://messaging.example.com/ws"
+  websocket-endpoint: "wss://clc.lockhead.cloud/ws"
   websocket-port: "8080"
   health-port: "8081"
   
@@ -23,7 +23,7 @@ data:
   log-level: "warn"
   
   # Frontend configuration for production
-  api-base-url: "https://messaging.example.com"
+  api-base-url: "https://clc.lockhead.cloud"
   websocket-reconnect-interval: "5000"
   websocket-max-retries: "5"
   

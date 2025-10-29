@@ -227,7 +227,7 @@ STAGING_EOF
     production)
         cat << PROD_EOF
   DEBUG: "false"
-  CORS_ORIGIN: "https://messaging.example.com"
+  CORS_ORIGIN: "https://clc.lockhead.cloud"
   RATE_LIMIT_ENABLED: "true"
   RATE_LIMIT_MAX: "500"
   MONITORING_ENABLED: "true"

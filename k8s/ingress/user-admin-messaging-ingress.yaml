@@ -22,10 +22,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - messaging.example.com
+    - clc.lockhead.cloud
     secretName: messaging-tls-secret
   rules:
-  - host: messaging.example.com
+  - host: clc.lockhead.cloud
     http:
       paths:
       # User frontend application

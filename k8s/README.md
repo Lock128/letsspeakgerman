@@ -79,8 +79,8 @@ Update the configuration files for your environment:
 
 ```bash
 # For production, update the domain name
-sed -i 's|messaging.example.com|your-domain.com|g' ingress/user-admin-messaging-ingress.yaml
-sed -i 's|messaging.example.com|your-domain.com|g' config/app-config.yaml
+sed -i 's|clc.lockhead.cloud|your-domain.com|g' ingress/user-admin-messaging-ingress.yaml
+sed -i 's|clc.lockhead.cloud|your-domain.com|g' config/app-config.yaml
 
 # Update secrets with actual values
 # Edit config/app-secrets.yaml and replace base64 encoded values

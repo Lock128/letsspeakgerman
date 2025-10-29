@@ -124,7 +124,7 @@ metadata:
     nginx.ingress.kubernetes.io/websocket-services: "websocket-service"
 spec:
   rules:
-  - host: messaging.example.com
+  - host: clc.lockhead.cloud
     http:
       paths:
       - path: /user
