@@ -1,22 +1,20 @@
 apiVersion: kro.run/v1alpha1
-kind: ResourceGroup
+kind: ResourceGraphDefinition
 metadata:
-  name: user-admin-messaging-stack
-  namespace: default
+  name: useradminmessagingstack.letsspeakgerman.io
 spec:
   schema:
-    openAPIV3Schema:
-      type: object
-      properties:
-        environment:
-          type: string
-          default: "dev"
-        region:
-          type: string
-          default: "eu-central-1"
-        retainResources:
-          type: boolean
-          default: false
+    apiVersion: v1alpha1
+    group: letsspeakgerman.io
+    kind: UserAdminMessagingStack
+    spec:
+      parameters:
+        environment: string | default="dev"
+        region: string | default="eu-central-1"
+        retainResources: boolean | default=false
+        connectionManagerRoleArn: string | optional
+        messageHandlerRoleArn: string | optional
+        websocketApiEndpoint: string | optional
   resources:
     # DynamoDB Table for WebSocket connections
     - id: connections-table
@@ -24,9 +22,9 @@ spec:
         apiVersion: dynamodb.services.k8s.aws/v1alpha1
         kind: Table
         metadata:
-          name: "websocket-connections-{{ .environment }}"
+          name: websocket-connections-${schema.spec.parameters.environment}
         spec:
-          tableName: "websocket-connections-{{ .environment }}"
+          tableName: websocket-connections-${schema.spec.parameters.environment}
           attributeDefinitions:
             - attributeName: connectionId
               attributeType: S
@@ -46,7 +44,7 @@ spec:
           timeToLiveSpecification:
             attributeName: ttl
             enabled: true
-          deletionPolicy: "{{ if .retainResources }}Retain{{ else }}Delete{{ end }}"
+          deletionPolicy: '${schema.spec.parameters.retainResources == true ? "Retain" : "Delete"}'
 
     # Lambda function for connection management
     - id: connection-manager-function
@@ -54,9 +52,9 @@ spec:
         apiVersion: lambda.services.k8s.aws/v1alpha1
         kind: Function
         metadata:
-          name: "connection-manager-{{ .environment }}"
+          name: connection-manager-${schema.spec.parameters.environment}
         spec:
-          functionName: "connection-manager-{{ .environment }}"
+          functionName: connection-manager-${schema.spec.parameters.environment}
           runtime: nodejs22.x
           handler: connection-manager.handler
           code:
@@ -67,8 +65,8 @@ spec:
               };
           environment:
             variables:
-              CONNECTIONS_TABLE_NAME: "websocket-connections-{{ .environment }}"
-          role: "{{ .connectionManagerRoleArn }}"
+              CONNECTIONS_TABLE_NAME: websocket-connections-${schema.spec.parameters.environment}
+          role: ${schema.spec.parameters.connectionManagerRoleArn}
 
     # Lambda function for message handling
     - id: message-handler-function
@@ -76,9 +74,9 @@ spec:
         apiVersion: lambda.services.k8s.aws/v1alpha1
         kind: Function
         metadata:
-          name: "message-handler-{{ .environment }}"
+          name: message-handler-${schema.spec.parameters.environment}
         spec:
-          functionName: "message-handler-{{ .environment }}"
+          functionName: message-handler-${schema.spec.parameters.environment}
           runtime: nodejs22.x
           handler: message-handler.handler
           code:
@@ -89,9 +87,9 @@ spec:
               };
           environment:
             variables:
-              CONNECTIONS_TABLE_NAME: "websocket-connections-{{ .environment }}"
-              WEBSOCKET_API_ENDPOINT: "{{ .websocketApiEndpoint }}"
-          role: "{{ .messageHandlerRoleArn }}"
+              CONNECTIONS_TABLE_NAME: websocket-connections-${schema.spec.parameters.environment}
+              WEBSOCKET_API_ENDPOINT: ${schema.spec.parameters.websocketApiEndpoint}
+          role: ${schema.spec.parameters.messageHandlerRoleArn}
 
     # WebSocket API
     - id: websocket-api
@@ -99,10 +97,10 @@ spec:
         apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
         kind: API
         metadata:
-          name: "websocket-api-{{ .environment }}"
+          name: websocket-api-${schema.spec.parameters.environment}
         spec:
-          name: "user-admin-messaging-websocket-{{ .environment }}"
-          description: "WebSocket API for real-time messaging between user and admin interfaces ({{ .environment }})"
+          name: user-admin-messaging-websocket-${schema.spec.parameters.environment}
+          description: WebSocket API for real-time messaging between user and admin interfaces (${schema.spec.parameters.environment})
           protocolType: WEBSOCKET
           routeSelectionExpression: "$request.body.action"
 
@@ -112,11 +110,11 @@ spec:
         apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
         kind: Stage
         metadata:
-          name: "websocket-stage-{{ .environment }}"
+          name: websocket-stage-${schema.spec.parameters.environment}
         spec:
           apiRef:
             from:
-              name: "websocket-api-{{ .environment }}"
+              name: websocket-api-${schema.spec.parameters.environment}
           stageName: prod
           autoDeploy: true
 
@@ -126,9 +124,9 @@ spec:
         apiVersion: s3.services.k8s.aws/v1alpha1
         kind: Bucket
         metadata:
-          name: "user-interface-bucket-{{ .environment }}"
+          name: user-interface-bucket-${schema.spec.parameters.environment}
         spec:
-          name: "user-admin-messaging-user-{{ .environment }}-{{ .region }}"
+          name: user-admin-messaging-user-${schema.spec.parameters.environment}-${schema.spec.parameters.region}
           publicAccessBlock:
             blockPublicAcls: true
             blockPublicPolicy: false
@@ -139,7 +137,7 @@ spec:
               suffix: index.html
             errorDocument:
               key: error.html
-          deletionPolicy: "{{ if .retainResources }}Retain{{ else }}Delete{{ end }}"
+          deletionPolicy: '${schema.spec.parameters.retainResources == true ? "Retain" : "Delete"}'
 
     # CloudFront Distribution
     - id: cloudfront-distribution
@@ -147,10 +145,10 @@ spec:
         apiVersion: cloudfront.services.k8s.aws/v1alpha1
         kind: Distribution
         metadata:
-          name: "website-distribution-{{ .environment }}"
+          name: website-distribution-${schema.spec.parameters.environment}
         spec:
           distributionConfig:
-            comment: "CloudFront distribution for user-admin messaging ({{ .environment }})"
+            comment: CloudFront distribution for user-admin messaging (${schema.spec.parameters.environment})
             defaultCacheBehavior:
               targetOriginID: "user-interface-origin"
               viewerProtocolPolicy: redirect-to-https
@@ -158,7 +156,7 @@ spec:
               compress: true
             origins:
               - id: "user-interface-origin"
-                domainName: "user-admin-messaging-user-{{ .environment }}-{{ .region }}.s3-website-{{ .region }}.amazonaws.com"
+                domainName: user-admin-messaging-user-${schema.spec.parameters.environment}-${schema.spec.parameters.region}.s3-website-${schema.spec.parameters.region}.amazonaws.com
                 customOriginConfig:
                   httpPort: 80
                   httpsPort: 443
