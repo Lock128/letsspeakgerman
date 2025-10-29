@@ -7,12 +7,12 @@
 export {
   FrontendEnvironmentDetector,
   DeploymentEnvironment
-} from './environment-detector';
+} from './environment-detector.js';
 
-export type { FrontendEnvironmentInfo } from './environment-detector';
+export type { FrontendEnvironmentInfo } from './environment-detector.js';
 
 // Configuration Management
-export { FrontendConfigurationManager } from './configuration-manager';
+export { FrontendConfigurationManager } from './configuration-manager.js';
 
 export type {
   BaseFrontendConfiguration,
@@ -20,15 +20,15 @@ export type {
   KubernetesFrontendConfiguration,
   DevelopmentFrontendConfiguration,
   FrontendConfiguration
-} from './configuration-manager';
+} from './configuration-manager.js';
 
 // WebSocket Adapter
-export { WebSocketAdapter } from './websocket-adapter';
-export type { WebSocketConnectionOptions } from './websocket-adapter';
+export { WebSocketAdapter } from './websocket-adapter.js';
+export type { WebSocketConnectionOptions } from './websocket-adapter.js';
 
 // Re-export for convenience
-import { FrontendConfigurationManager } from './configuration-manager';
-import { FrontendEnvironmentDetector } from './environment-detector';
+import { FrontendConfigurationManager } from './configuration-manager.js';
+import { FrontendEnvironmentDetector } from './environment-detector.js';
 
 // Convenience functions
 export function getFrontendConfigurationManager() {

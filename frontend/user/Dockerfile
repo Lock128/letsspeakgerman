@@ -11,7 +11,8 @@ WORKDIR /app
 # Copy and build shared config first
 COPY frontend/shared/ ./frontend/shared/
 WORKDIR /app/frontend/shared
-RUN npm install && npm install @types/node --save-dev && npm run build
+# Clean any existing build files and rebuild
+RUN rm -rf config/*.js && npm install && npm install @types/node --save-dev && npm run build
 
 # Set working directory to user frontend
 WORKDIR /app/frontend/user
@@ -56,18 +57,34 @@ RUN echo '{ \
     "esModuleInterop": true, \
     "skipLibCheck": true, \
     "forceConsistentCasingInFileNames": true, \
-    "moduleResolution": "node" \
+    "moduleResolution": "node", \
+    "allowImportingTsExtensions": false, \
+    "noEmit": false \
   }, \
   "include": ["src/**/*", "shared/**/*"], \
   "exclude": ["dist", "node_modules"] \
 }' > tsconfig.docker.json
 
-# Build the application
+# Build the application and fix imports
 RUN npx tsc -p tsconfig.docker.json && \
     cp src/*.html dist/ && \
     cp src/*.css dist/ && \
-    cp -r shared dist/ && \
-    cp dist/src/*.js dist/
+    # Copy the pre-built shared files from the shared build stage
+    mkdir -p dist/shared && \
+    echo "Checking shared build files:" && \
+    ls -la /app/frontend/shared/config/ && \
+    echo "Checking for loadDevelopmentConfiguration in shared JS:" && \
+    grep -A 5 "loadDevelopmentConfiguration" /app/frontend/shared/config/configuration-manager.js || echo "Method not found" && \
+    cp -r /app/frontend/shared/config dist/shared/ && \
+    cp dist/src/*.js dist/ && \
+    # Fix import statements to include .js extensions in all files
+    echo "Fixing import statements..." && \
+    sed -i "s/configuration-manager';/configuration-manager.js';/g" dist/shared/config/*.js && \
+    sed -i "s/environment-detector';/environment-detector.js';/g" dist/shared/config/*.js && \
+    sed -i "s/websocket-adapter';/websocket-adapter.js';/g" dist/shared/config/*.js && \
+    echo "Import statements fixed." && \
+    echo "Verifying fixes:" && \
+    grep "environment-detector" dist/shared/config/configuration-manager.js || echo "No environment-detector imports found"
 
 # Production stage
 FROM nginx:alpine AS production
@@ -149,6 +166,11 @@ http {
         location ~* \.html$ {
             expires -1;
             add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
+
+        # Handle shared module imports (resolve ../shared to ./shared)
+        location ~ ^/shared/(.*)$ {
+            try_files /shared/$1 =404;
         }
 
         # Fallback to index.html for SPA routing

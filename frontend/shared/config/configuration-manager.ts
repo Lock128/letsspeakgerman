@@ -3,7 +3,7 @@
  * Provides environment-specific configuration for frontend applications
  */
 
-import { FrontendEnvironmentDetector, DeploymentEnvironment, FrontendEnvironmentInfo } from './environment-detector';
+import { FrontendEnvironmentDetector, DeploymentEnvironment, FrontendEnvironmentInfo } from './environment-detector.js';
 
 export interface BaseFrontendConfiguration {
   environment: string;
@@ -145,10 +145,16 @@ export class FrontendConfigurationManager {
   }
 
   private loadDevelopmentConfiguration(baseConfig: BaseFrontendConfiguration): DevelopmentFrontendConfiguration {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    
+    // For Docker development, use nginx proxy path
+    const defaultWebSocketUrl = `${protocol}//${host}/ws`;
+    
     return {
       ...baseConfig,
-      webSocketUrl: this.getConfigValue('WEBSOCKET_URL', 'ws://localhost:8080'),
-      apiEndpoint: this.getConfigValue('API_ENDPOINT', 'http://localhost:8080/api'),
+      webSocketUrl: this.getConfigValue('WEBSOCKET_URL', defaultWebSocketUrl),
+      apiEndpoint: this.getConfigValue('API_ENDPOINT', `${window.location.protocol}//${host}/api`),
       mockData: this.getConfigValue('MOCK_DATA', 'false') === 'true'
     };
   }

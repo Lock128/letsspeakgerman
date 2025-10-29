@@ -1,3 +1,5 @@
+console.log('📋 UserConfig: Config script loaded!');
+
 // Configuration file for user interface
 // Uses environment detection and configuration management system
 
@@ -29,20 +31,30 @@ class ConfigManager {
   }
 
   public getConfig(): Config {
+    console.log('📋 UserConfig: Getting configuration...');
+    
     if (this.cachedConfig) {
+      console.log('📋 UserConfig: Using cached configuration:', this.cachedConfig);
       return this.cachedConfig;
     }
 
     try {
+      console.log('📋 UserConfig: Loading fresh configuration...');
       const configManager = getFrontendConfigurationManager();
+      console.log('📋 UserConfig: Configuration manager obtained');
+      
       const frontendConfig = configManager.getConfiguration('user');
+      console.log('📋 UserConfig: Frontend configuration loaded:', frontendConfig);
       
       this.cachedConfig = this.adaptConfig(frontendConfig);
+      console.log('📋 UserConfig: Configuration adapted:', this.cachedConfig);
       return this.cachedConfig;
     } catch (error) {
-      console.error('Failed to load configuration:', error);
-      // Return fallback configuration
-      return this.getFallbackConfig();
+      console.error('❌ UserConfig: Failed to load configuration:', error);
+      console.log('🔄 UserConfig: Using fallback configuration...');
+      const fallbackConfig = this.getFallbackConfig();
+      console.log('📋 UserConfig: Fallback configuration:', fallbackConfig);
+      return fallbackConfig;
     }
   }
 
@@ -83,20 +95,29 @@ class ConfigManager {
   }
 
   private getFallbackConfig(): Config {
+    console.log('🔄 UserConfig: Creating fallback configuration...');
+    
     // Provide fallback configuration for when detection fails
     const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = typeof window !== 'undefined' ? window.location.host : 'localhost:8080';
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const port = typeof window !== 'undefined' && window.location.port ? window.location.port : '8080';
+    
+    // For Docker setup, use port 8080 for WebSocket
+    const wsPort = port === '80' || port === '443' ? '8080' : port;
+    const wsUrl = `${protocol}//${host}:${wsPort}/ws`;
+    
+    console.log('🔄 UserConfig: Fallback WebSocket URL:', wsUrl);
     
     return {
-      environment: 'production',
-      webSocketUrl: `${protocol}//${host}/ws`,
+      environment: 'development',
+      webSocketUrl: wsUrl,
       connectionType: 'user',
       reconnectInterval: 5000,
       maxReconnectAttempts: 10,
       connectionTimeout: 30000,
       enableLogging: true,
-      logLevel: 'info',
-      deploymentMode: DeploymentEnvironment.KUBERNETES
+      logLevel: 'debug',
+      deploymentMode: 'development' as any
     };
   }
 }

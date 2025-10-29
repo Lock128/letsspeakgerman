@@ -81,7 +81,7 @@ class WebSocketServerApp {
       // Generate unique connection ID
       const connectionId = uuidv4();
       ws.connectionId = connectionId;
-      ws.connectionType = 'admin'; // Default to admin, will be updated by client
+      ws.connectionType = 'user'; // Default to user, will be updated by client
       ws.isAlive = true;
 
       // Store connection locally
@@ -93,7 +93,7 @@ class WebSocketServerApp {
       console.log(`WebSocket connection established: ${connectionId}`);
 
       // Store connection in Redis
-      this.connectionManager.storeConnection(connectionId, 'admin')
+      this.connectionManager.storeConnection(connectionId, 'user')
         .catch(error => {
           console.error(`Failed to store connection ${connectionId}:`, error);
         });
@@ -175,13 +175,15 @@ class WebSocketServerApp {
       } else if (messageData.action === 'setConnectionType') {
         // Handle connection type setting
         await this.handleSetConnectionType(ws, messageData);
+      } else if (messageData.action === 'identify') {
+        // Handle admin identification
+        await this.handleIdentify(ws, messageData);
+      } else if (messageData.action === 'ping') {
+        // Handle ping - just respond with pong
+        ws.send(JSON.stringify({ action: 'pong', timestamp: new Date().toISOString() }));
       } else {
         // Unknown action
-        ws.send(JSON.stringify({
-          error: 'Unknown action',
-          action: messageData.action,
-          timestamp: new Date().toISOString()
-        }));
+        console.log(`Unknown action from ${connectionId}: ${messageData.action}`);
       }
     } catch (error) {
       console.error(`Error processing message from ${connectionId}:`, error);
@@ -239,6 +241,49 @@ class WebSocketServerApp {
       failureCount,
       timestamp: new Date().toISOString()
     }));
+  }
+
+  private async handleIdentify(ws: ExtendedWebSocket, messageData: any): Promise<void> {
+    const connectionType = messageData.type as 'user' | 'admin';
+    
+    if (!connectionType || (connectionType !== 'user' && connectionType !== 'admin')) {
+      ws.send(JSON.stringify({
+        error: 'Invalid connection type. Must be "user" or "admin"',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    if (!ws.connectionId) {
+      ws.send(JSON.stringify({
+        error: 'Connection ID not found',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+
+    try {
+      // Update in Redis
+      await this.connectionManager.updateConnectionType(ws.connectionId, connectionType);
+      
+      // Update locally
+      ws.connectionType = connectionType;
+
+      console.log(`Connection ${ws.connectionId} identified as: ${connectionType}`);
+
+      ws.send(JSON.stringify({
+        type: 'identified',
+        connectionType: connectionType,
+        message: 'Connection identified successfully',
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error(`Failed to identify connection ${ws.connectionId}:`, error);
+      ws.send(JSON.stringify({
+        error: 'Failed to identify connection',
+        timestamp: new Date().toISOString()
+      }));
+    }
   }
 
   private async handleSetConnectionType(ws: ExtendedWebSocket, messageData: MessageData): Promise<void> {

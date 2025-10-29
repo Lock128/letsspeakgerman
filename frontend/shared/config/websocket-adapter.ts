@@ -3,7 +3,7 @@
  * Handles environment-specific WebSocket connection logic
  */
 
-import { DeploymentEnvironment } from './environment-detector';
+import { DeploymentEnvironment } from './environment-detector.js';
 
 export interface WebSocketConnectionOptions {
   connectionType: 'user' | 'admin';

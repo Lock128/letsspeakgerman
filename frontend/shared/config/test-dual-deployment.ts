@@ -3,7 +3,7 @@
  * This can be used to verify the configuration system works correctly
  */
 
-import { getFrontendConfigurationManager, getFrontendEnvironmentDetector, WebSocketAdapter } from './index';
+import { getFrontendConfigurationManager, getFrontendEnvironmentDetector, WebSocketAdapter } from './index.js';
 
 // Test environment detection
 console.log('=== Environment Detection Test ===');

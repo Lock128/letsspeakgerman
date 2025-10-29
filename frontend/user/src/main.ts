@@ -1,5 +1,38 @@
+console.log('🚀 UserWebSocketClient: Script loaded!');
+
 import { config, configManager, Config } from './config.js';
-import { WebSocketAdapter } from '../shared/config/websocket-adapter.js';
+
+// Simple fallback WebSocketAdapter
+const WebSocketAdapter = {
+    createConnection: (url: string, options: any) => {
+        console.log('🔧 UserWebSocketClient: Creating WebSocket connection');
+        const wsUrl = new URL(url);
+        wsUrl.searchParams.set('type', options.connectionType);
+        wsUrl.searchParams.set('t', Date.now().toString());
+        console.log('🔧 UserWebSocketClient: Final WebSocket URL:', wsUrl.toString());
+        return new WebSocket(wsUrl.toString());
+    },
+    validateWebSocketUrl: (url: string) => {
+        try {
+            new URL(url);
+            return { isValid: true };
+        } catch {
+            return { isValid: false, error: 'Invalid URL format' };
+        }
+    },
+    buildMessage: (action: string, data: any, config: any) => ({
+        action,
+        ...data,
+        timestamp: Date.now(),
+        type: config.connectionType
+    }),
+    getErrorMessage: (deploymentMode: string, errorType: string) => {
+        return `Failed to ${errorType === 'connection' ? 'connect to' : errorType} messaging system`;
+    },
+    getReconnectInterval: (deploymentMode: string, attempt: number) => {
+        return Math.min(2000 * Math.pow(1.5, attempt - 1), 30000);
+    }
+};
 
 // WebSocket client for user interface
 class UserWebSocketClient {
@@ -21,21 +54,46 @@ class UserWebSocketClient {
     private feedbackElement: HTMLElement;
 
     constructor() {
-        // Use configuration from config file with dynamic refresh capability
-        this.wsUrl = config.webSocketUrl;
-        this.maxReconnectAttempts = config.maxReconnectAttempts;
+        console.log('🚀 UserWebSocketClient: Starting initialization...');
         
-        // Initialize DOM elements
-        this.sendButton = document.getElementById('sendMessageBtn') as HTMLButtonElement;
-        this.buttonText = this.sendButton.querySelector('.button-text') as HTMLSpanElement;
-        this.buttonLoader = this.sendButton.querySelector('.button-loader') as HTMLSpanElement;
-        this.statusIndicator = document.getElementById('connectionStatus') as HTMLElement;
-        this.statusDot = this.statusIndicator.querySelector('.status-dot') as HTMLElement;
-        this.statusText = this.statusIndicator.querySelector('.status-text') as HTMLElement;
-        this.feedbackElement = document.getElementById('feedback') as HTMLElement;
+        try {
+            // Use configuration from config file with dynamic refresh capability
+            console.log('📋 UserWebSocketClient: Loading configuration...');
+            this.wsUrl = config.webSocketUrl;
+            this.maxReconnectAttempts = config.maxReconnectAttempts;
+            console.log('📋 UserWebSocketClient: Configuration loaded:', {
+                wsUrl: this.wsUrl,
+                maxReconnectAttempts: this.maxReconnectAttempts,
+                fullConfig: config
+            });
+            
+            // Initialize DOM elements
+            console.log('🎯 UserWebSocketClient: Initializing DOM elements...');
+            this.sendButton = document.getElementById('sendMessageBtn') as HTMLButtonElement;
+            this.buttonText = this.sendButton.querySelector('.button-text') as HTMLSpanElement;
+            this.buttonLoader = this.sendButton.querySelector('.button-loader') as HTMLSpanElement;
+            this.statusIndicator = document.getElementById('connectionStatus') as HTMLElement;
+            this.statusDot = this.statusIndicator.querySelector('.status-dot') as HTMLElement;
+            this.statusText = this.statusIndicator.querySelector('.status-text') as HTMLElement;
+            this.feedbackElement = document.getElementById('feedback') as HTMLElement;
+            
+            console.log('🎯 UserWebSocketClient: DOM elements initialized:', {
+                sendButton: !!this.sendButton,
+                buttonText: !!this.buttonText,
+                buttonLoader: !!this.buttonLoader,
+                statusIndicator: !!this.statusIndicator,
+                statusDot: !!this.statusDot,
+                statusText: !!this.statusText,
+                feedbackElement: !!this.feedbackElement
+            });
 
-        this.init();
-        this.setupNetworkMonitoring();
+            this.init();
+            this.setupNetworkMonitoring();
+            console.log('✅ UserWebSocketClient: Initialization complete!');
+        } catch (error) {
+            console.error('❌ UserWebSocketClient: Initialization failed:', error);
+            throw error;
+        }
     }
 
     private init(): void {
@@ -47,78 +105,148 @@ class UserWebSocketClient {
     }
 
     private connect(): void {
+        console.log('🔌 UserWebSocketClient: Starting connection process...');
+        
         if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.CONNECTING)) {
+            console.log('⏳ UserWebSocketClient: Already connecting, skipping...');
             return;
         }
 
         this.isConnecting = true;
         this.isIntentionalDisconnect = false;
         this.updateConnectionStatus('connecting', 'Connecting...');
+        console.log('🔄 UserWebSocketClient: Connection state updated to connecting');
 
         try {
             // Refresh configuration to get latest WebSocket URL
+            console.log('📋 UserWebSocketClient: Refreshing configuration...');
             const currentConfig = configManager.refreshConfig();
             this.wsUrl = currentConfig.webSocketUrl;
             this.maxReconnectAttempts = currentConfig.maxReconnectAttempts;
+            
+            console.log('📋 UserWebSocketClient: Configuration refreshed:', {
+                wsUrl: this.wsUrl,
+                maxReconnectAttempts: this.maxReconnectAttempts,
+                deploymentMode: currentConfig.deploymentMode,
+                connectionType: currentConfig.connectionType
+            });
+
+            // Validate WebSocket URL
+            const validation = WebSocketAdapter.validateWebSocketUrl(this.wsUrl);
+            if (!validation.isValid) {
+                throw new Error(`Invalid WebSocket URL: ${validation.error}`);
+            }
+            console.log('✅ UserWebSocketClient: WebSocket URL validation passed');
 
             // Create WebSocket connection with environment-specific parameters
+            console.log('🔗 UserWebSocketClient: Creating WebSocket connection...');
             this.ws = this.createWebSocketConnection(this.wsUrl, currentConfig);
+            console.log('🔗 UserWebSocketClient: WebSocket object created, setting up event handlers...');
             this.setupWebSocketEventHandlers();
+            console.log('✅ UserWebSocketClient: Event handlers set up successfully');
         } catch (error) {
-            console.error('Failed to create WebSocket connection:', error);
+            console.error('❌ UserWebSocketClient: Failed to create WebSocket connection:', error);
             this.handleConnectionError();
         }
     }
 
     private createWebSocketConnection(url: string, config: Config): WebSocket {
-        // Use WebSocket adapter for environment-specific connection
-        return WebSocketAdapter.createConnection(url, {
+        console.log('🔧 UserWebSocketClient: Creating WebSocket connection with adapter...');
+        console.log('🔧 UserWebSocketClient: Connection parameters:', {
+            url,
             connectionType: config.connectionType,
             deploymentMode: config.deploymentMode,
             enableLogging: config.enableLogging,
             connectionTimeout: config.connectionTimeout
         });
+        
+        try {
+            // Use WebSocket adapter for environment-specific connection
+            const ws = WebSocketAdapter.createConnection(url, {
+                connectionType: config.connectionType,
+                deploymentMode: config.deploymentMode,
+                enableLogging: config.enableLogging,
+                connectionTimeout: config.connectionTimeout
+            });
+            console.log('✅ UserWebSocketClient: WebSocket connection created successfully');
+            return ws;
+        } catch (error) {
+            console.error('❌ UserWebSocketClient: Failed to create WebSocket connection:', error);
+            throw error;
+        }
     }
 
     private setupWebSocketEventHandlers(): void {
-        if (!this.ws) return;
+        if (!this.ws) {
+            console.error('❌ UserWebSocketClient: Cannot set up event handlers - WebSocket is null');
+            return;
+        }
+
+        console.log('🎧 UserWebSocketClient: Setting up WebSocket event handlers...');
 
         this.ws.onopen = () => {
-            console.log('WebSocket connected');
+            console.log('🎉 UserWebSocketClient: WebSocket connection opened successfully!');
+            console.log('🎉 UserWebSocketClient: Connection details:', {
+                readyState: this.ws?.readyState,
+                url: this.ws?.url,
+                protocol: this.ws?.protocol
+            });
+            
             this.isConnecting = false;
             this.reconnectAttempts = 0;
             this.reconnectDelay = 1000;
             this.updateConnectionStatus('connected', 'Connected');
             this.sendButton.disabled = false;
             this.showFeedback('Connected to messaging system', 'success');
+            
+            // Identify as user connection
+            this.identifyAsUser();
         };
 
         this.ws.onclose = (event) => {
-            console.log('WebSocket disconnected:', event.code, event.reason);
+            console.log('🔌 UserWebSocketClient: WebSocket connection closed');
+            console.log('🔌 UserWebSocketClient: Close event details:', {
+                code: event.code,
+                reason: event.reason,
+                wasClean: event.wasClean,
+                isIntentionalDisconnect: this.isIntentionalDisconnect
+            });
+            
             this.isConnecting = false;
             this.updateConnectionStatus('disconnected', 'Disconnected');
             this.sendButton.disabled = true;
 
             if (!this.isIntentionalDisconnect) {
+                console.log('🔄 UserWebSocketClient: Unintentional disconnect, scheduling reconnect...');
                 this.showFeedback('Connection lost. Attempting to reconnect...', 'error');
                 this.scheduleReconnect();
+            } else {
+                console.log('✅ UserWebSocketClient: Intentional disconnect, not reconnecting');
             }
         };
 
         this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
+            console.error('❌ UserWebSocketClient: WebSocket error occurred:', error);
+            console.error('❌ UserWebSocketClient: WebSocket state:', {
+                readyState: this.ws?.readyState,
+                url: this.ws?.url
+            });
             this.handleConnectionError();
         };
 
         this.ws.onmessage = (event) => {
-            console.log('Received message:', event.data);
+            console.log('📨 UserWebSocketClient: Received message:', event.data);
             try {
                 const message = JSON.parse(event.data);
+                console.log('📨 UserWebSocketClient: Parsed message data:', message);
                 this.handleServerMessage(message);
             } catch (error) {
-                console.error('Failed to parse server message:', error);
+                console.error('❌ UserWebSocketClient: Failed to parse server message:', error);
+                console.error('❌ UserWebSocketClient: Raw message data:', event.data);
             }
         };
+
+        console.log('✅ UserWebSocketClient: Event handlers set up successfully');
     }
 
     private handleConnectionError(): void {
@@ -188,6 +316,25 @@ class UserWebSocketClient {
             console.error('Failed to send message:', error);
             this.showFeedback('Failed to send message. Please try again.', 'error');
             this.resetButtonState();
+        }
+    }
+
+    private identifyAsUser(): void {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+        const currentConfig = configManager.getConfig();
+        const identificationMessage = {
+            action: 'identify',
+            type: 'user',
+            deploymentMode: currentConfig.deploymentMode,
+            timestamp: Date.now()
+        };
+
+        try {
+            this.ws.send(JSON.stringify(identificationMessage));
+            console.log('User identification sent:', identificationMessage);
+        } catch (error) {
+            console.error('Failed to send user identification:', error);
         }
     }
 
