@@ -1,11 +1,10 @@
-apiVersion: kro.run/v1alpha1
-kind: ResourceGroupInstance
+apiVersion: letsspeakgerman.io/v1alpha1
+kind: UserAdminMessagingStack
 metadata:
   name: user-admin-messaging-staging
   namespace: default
 spec:
-  resourceGroup: user-admin-messaging-stack
-  values:
+  parameters:
     environment: "staging"
     region: "eu-central-1"
     retainResources: true

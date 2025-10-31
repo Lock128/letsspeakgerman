@@ -7,21 +7,20 @@ data:
   environment: "dev"
   region: "eu-central-1"
   retainResources: "false"
-  connectionManagerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
-  messageHandlerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
+  connectionManagerRoleArn: "arn:aws:iam::345856669986:role/lambda-execution-role"
+  messageHandlerRoleArn: "arn:aws:iam::345856669986:role/lambda-execution-role"
   websocketApiEndpoint: "wss://API_ID.execute-api.eu-central-1.amazonaws.com/prod"
 ---
-apiVersion: kro.run/v1alpha1
-kind: ResourceGroupInstance
+apiVersion: letsspeakgerman.io/v1alpha1
+kind: UserAdminMessagingStack
 metadata:
   name: user-admin-messaging-dev
   namespace: default
 spec:
-  resourceGroup: user-admin-messaging-stack
-  values:
+  parameters:
     environment: "dev"
     region: "eu-central-1"
     retainResources: false
-    connectionManagerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
-    messageHandlerRoleArn: "arn:aws:iam::ACCOUNT_ID:role/lambda-execution-role"
+    connectionManagerRoleArn: "arn:aws:iam::345856669986:role/lambda-execution-role"
+    messageHandlerRoleArn: "arn:aws:iam::345856669986:role/lambda-execution-role"
     websocketApiEndpoint: "wss://API_ID.execute-api.eu-central-1.amazonaws.com/prod"

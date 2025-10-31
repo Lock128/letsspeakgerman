@@ -1,7 +1,7 @@
 apiVersion: clc.lockhead.cloud/v1alpha1
 kind: XUserAdminMessaging
 metadata:
-  name: user-admin-messaging-dev
+  name: user-admin-messaging-crossplane-dev
 spec:
   environment: dev
   region: eu-central-1

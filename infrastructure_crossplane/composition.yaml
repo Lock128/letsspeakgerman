@@ -56,7 +56,7 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "websocket-connections-%s"
+                      fmt: "crossplane-websocket-connections-%s"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.tags.Environment
@@ -90,7 +90,7 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "lambda-execution-role-%s"
+                      fmt: "crossplane-lambda-execution-role-%s"
 
           # IAM Policy for DynamoDB access
           dynamodb-policy:
@@ -124,7 +124,7 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "dynamodb-policy-%s"
+                      fmt: "crossplane-dynamodb-policy-%s"
 
           # Connection Manager Lambda Function
           connection-manager-function:
@@ -151,7 +151,7 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "connection-manager-%s"
+                      fmt: "crossplane-connection-manager-%s"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
@@ -185,7 +185,7 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "message-handler-%s"
+                      fmt: "crossplane-message-handler-%s"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
@@ -211,7 +211,7 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "websocket-api-%s"
+                      fmt: "crossplane-websocket-api-%s"
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.name
@@ -243,7 +243,7 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "user-interface-bucket-%s"
+                      fmt: "crossplane-user-interface-bucket-%s"
 
           # CloudFront Distribution
           cloudfront-distribution:
@@ -272,4 +272,4 @@ spec:
                 transforms:
                   - type: string
                     string:
-                      fmt: "cloudfront-distribution-%s"
+                      fmt: "crossplane-cloudfront-distribution-%s"

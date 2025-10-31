@@ -17,7 +17,7 @@ spec:
         websocketApiEndpoint: string | optional
   resources:
     # DynamoDB Table for WebSocket connections
-    - id: connections-table
+    - id: connectionsTable
       template:
         apiVersion: dynamodb.services.k8s.aws/v1alpha1
         kind: Table
@@ -41,50 +41,38 @@ spec:
               projection:
                 projectionType: ALL
           billingMode: PAY_PER_REQUEST
-          timeToLiveSpecification:
-            attributeName: ttl
-            enabled: true
-          deletionPolicy: '${schema.spec.parameters.retainResources == true ? "Retain" : "Delete"}'
 
     # Lambda function for connection management
-    - id: connection-manager-function
+    - id: connectionManagerFunction
       template:
         apiVersion: lambda.services.k8s.aws/v1alpha1
         kind: Function
         metadata:
           name: connection-manager-${schema.spec.parameters.environment}
         spec:
-          functionName: connection-manager-${schema.spec.parameters.environment}
+          name: connection-manager-${schema.spec.parameters.environment}
           runtime: nodejs22.x
           handler: connection-manager.handler
           code:
-            zipFile: |
-              exports.handler = async (event) => {
-                console.log('Connection event:', JSON.stringify(event, null, 2));
-                return { statusCode: 200 };
-              };
+            zipFile: ZXhwb3J0cy5oYW5kbGVyID0gYXN5bmMgKGV2ZW50KSA9PiB7CiAgY29uc29sZS5sb2coJ0Nvbm5lY3Rpb24gZXZlbnQ6JywgSlNPTi5zdHJpbmdpZnkoZXZlbnQsIG51bGwsIDIpKTsKICByZXR1cm4geyBzdGF0dXNDb2RlOiAyMDAgfTsKfTs=
           environment:
             variables:
               CONNECTIONS_TABLE_NAME: websocket-connections-${schema.spec.parameters.environment}
           role: ${schema.spec.parameters.connectionManagerRoleArn}
 
     # Lambda function for message handling
-    - id: message-handler-function
+    - id: messageHandlerFunction
       template:
         apiVersion: lambda.services.k8s.aws/v1alpha1
         kind: Function
         metadata:
           name: message-handler-${schema.spec.parameters.environment}
         spec:
-          functionName: message-handler-${schema.spec.parameters.environment}
+          name: message-handler-${schema.spec.parameters.environment}
           runtime: nodejs22.x
           handler: message-handler.handler
           code:
-            zipFile: |
-              exports.handler = async (event) => {
-                console.log('Message event:', JSON.stringify(event, null, 2));
-                return { statusCode: 200 };
-              };
+            zipFile: ZXhwb3J0cy5oYW5kbGVyID0gYXN5bmMgKGV2ZW50KSA9PiB7CiAgY29uc29sZS5sb2coJ01lc3NhZ2UgZXZlbnQ6JywgSlNPTi5zdHJpbmdpZnkoZXZlbnQsIG51bGwsIDIpKTsKICByZXR1cm4geyBzdGF0dXNDb2RlOiAyMDAgfTsKfTs=
           environment:
             variables:
               CONNECTIONS_TABLE_NAME: websocket-connections-${schema.spec.parameters.environment}
@@ -92,7 +80,7 @@ spec:
           role: ${schema.spec.parameters.messageHandlerRoleArn}
 
     # WebSocket API
-    - id: websocket-api
+    - id: websocketApi
       template:
         apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
         kind: API
@@ -105,7 +93,7 @@ spec:
           routeSelectionExpression: "$request.body.action"
 
     # WebSocket API Stage
-    - id: websocket-stage
+    - id: websocketStage
       template:
         apiVersion: apigatewayv2.services.k8s.aws/v1alpha1
         kind: Stage
@@ -119,7 +107,7 @@ spec:
           autoDeploy: true
 
     # S3 bucket for user interface
-    - id: user-interface-bucket
+    - id: userInterfaceBucket
       template:
         apiVersion: s3.services.k8s.aws/v1alpha1
         kind: Bucket
@@ -128,19 +116,18 @@ spec:
         spec:
           name: user-admin-messaging-user-${schema.spec.parameters.environment}-${schema.spec.parameters.region}
           publicAccessBlock:
-            blockPublicAcls: true
+            blockPublicACLs: true
             blockPublicPolicy: false
-            ignorePublicAcls: true
+            ignorePublicACLs: true
             restrictPublicBuckets: false
-          websiteConfiguration:
+          website:
             indexDocument:
               suffix: index.html
             errorDocument:
               key: error.html
-          deletionPolicy: '${schema.spec.parameters.retainResources == true ? "Retain" : "Delete"}'
 
     # CloudFront Distribution
-    - id: cloudfront-distribution
+    - id: cloudfrontDistribution
       template:
         apiVersion: cloudfront.services.k8s.aws/v1alpha1
         kind: Distribution
@@ -155,21 +142,23 @@ spec:
               cachePolicyID: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingOptimized
               compress: true
             origins:
-              - id: "user-interface-origin"
-                domainName: user-admin-messaging-user-${schema.spec.parameters.environment}-${schema.spec.parameters.region}.s3-website-${schema.spec.parameters.region}.amazonaws.com
-                customOriginConfig:
-                  httpPort: 80
-                  httpsPort: 443
-                  originProtocolPolicy: http-only
+              items:
+                - id: "user-interface-origin"
+                  domainName: user-admin-messaging-user-${schema.spec.parameters.environment}-${schema.spec.parameters.region}.s3-website-${schema.spec.parameters.region}.amazonaws.com
+                  customOriginConfig:
+                    httpPort: 80
+                    httpSPort: 443
+                    originProtocolPolicy: http-only
             defaultRootObject: index.html
             customErrorResponses:
-              - errorCode: 404
-                responseCode: 200
-                responsePagePath: "/index.html"
-                errorCachingMinTTL: 1800
-              - errorCode: 403
-                responseCode: 200
-                responsePagePath: "/index.html"
-                errorCachingMinTTL: 1800
+              items:
+                - errorCode: 404
+                  responseCode: "200"
+                  responsePagePath: "/index.html"
+                  errorCachingMinTTL: 1800
+                - errorCode: 403
+                  responseCode: "200"
+                  responsePagePath: "/index.html"
+                  errorCachingMinTTL: 1800
             enabled: true
             priceClass: PriceClass_100

@@ -127,6 +127,11 @@ tasks:
           --from-literal=credentials="$AWS_CREDS" \
           --dry-run=client -o yaml | kubectl apply -f -
 
+        AWS_CREDS=$(cat {{.AWS_CREDENTIALS_PATH}})
+        kubectl create secret generic aws-creds \
+          --from-literal=credentials="$AWS_CREDS" \
+          --dry-run=client -o yaml | kubectl apply -f -          
+
   wait:ready:
     desc: Wait for KRO and ACK controllers to be ready
     cmds:
@@ -160,9 +165,25 @@ tasks:
         echo "Deploying ResourceGroup definition..."
         kubectl apply -f resource-group.yaml
         
-        # Wait for ResourceGroup to be ready
-        echo "Waiting for ResourceGroup to be ready..."
-        kubectl wait --for=condition=Ready resourcegroup/user-admin-messaging-stack --timeout=60s
+        # Wait for ResourceGraphDefinition to become active
+        echo "Waiting for ResourceGraphDefinition to become active..."
+        timeout=60
+        while [ $timeout -gt 0 ]; do
+          state=$(kubectl get resourcegraphdefinition/useradminmessagingstack.letsspeakgerman.io -o jsonpath='{.status.state}' 2>/dev/null || echo "Unknown")
+          if [ "$state" = "Active" ]; then
+            echo "ResourceGraphDefinition is now active"
+            break
+          fi
+          echo "ResourceGraphDefinition state: $state, waiting..."
+          sleep 2
+          timeout=$((timeout-2))
+        done
+        
+        if [ $timeout -le 0 ]; then
+          echo "Timeout waiting for ResourceGraphDefinition to become active"
+          kubectl describe resourcegraphdefinition/useradminmessagingstack.letsspeakgerman.io
+          exit 1
+        fi
         
         # Deploy environment-specific instance
         INSTANCE_FILE="instances/{{.ENVIRONMENT}}-instance.yaml"
@@ -192,16 +213,16 @@ tasks:
     cmds:
       - |
         echo "=== KRO Status ==="
-        kubectl get resourcegroups
+        kubectl get resourcegraphdefinition
         echo ""
         echo "=== ACK Controllers ==="
         kubectl get pods -n ack-system
         echo ""
-        echo "=== Resource Group Instances ==="
-        kubectl get resourcegroupinstance
+        echo "=== UserAdminMessagingStack Instances ==="
+        kubectl get useradminmessagingstack
         echo ""
         echo "=== Environment: {{.ENVIRONMENT}} ==="
-        kubectl get resourcegroupinstance "user-admin-messaging-{{.ENVIRONMENT}}" -o yaml || echo "Environment {{.ENVIRONMENT}} not found"
+        kubectl get useradminmessagingstack "user-admin-messaging-{{.ENVIRONMENT}}" -o yaml || echo "Environment {{.ENVIRONMENT}} not found"
 
   logs:
     desc: Show KRO and ACK controller logs
