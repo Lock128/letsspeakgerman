@@ -3,6 +3,8 @@ version: '3'
 vars:
   KRO_VERSION: latest
   NAMESPACE: default
+  AWS_CREDENTIALS_PATH: '{{.AWS_CREDENTIALS_PATH | default "~/.aws/credentials"}}'
+  CONTROLLER_NAMESPACE: ack-system
 
 tasks:
   setup:
@@ -17,9 +19,17 @@ tasks:
     cmds:
       - |
         echo "Installing Kro..."
-        kubectl apply -f https://github.com/kubernetes-sigs/kro/releases/{{.KRO_VERSION}}/download/kro.yaml
-        echo "Waiting for Kro to be ready..."
-        kubectl wait --for=condition=Available deployment/kro-controller-manager -n kro-system --timeout=300s
+
+        export KRO_VERSION=$(curl -sL \
+          https://api.github.com/repos/kubernetes-sigs/kro/releases/latest | \
+          jq -r '.tag_name | ltrimstr("v")'
+        )
+        echo $KRO_VERSION
+
+        helm install kro oci://registry.k8s.io/kro/charts/kro \
+        --namespace kro-system \
+        --create-namespace \
+        --version=${KRO_VERSION}
 
   install:ack-controllers:
     desc: Install ACK (AWS Controllers for Kubernetes) controllers
@@ -27,81 +37,110 @@ tasks:
       - |
         echo "Creating ACK system namespace..."
         kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f -
-        
-        echo "Installing ACK Controllers using Helm..."
-        
-        # Add AWS Controllers Helm repository
-        helm repo add aws-controllers https://aws-controllers-k8s.github.io/aws-controllers-k8s
-        helm repo update
+        export CONTROLLER_NAMESPACE=ack-system
+        echo "Installing ACK Controllers using Helm with OCI registries..."
         
         # Install DynamoDB Controller
         echo "Installing DynamoDB Controller..."
-        helm install ack-dynamodb-controller oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \
-          --version=v1.2.10 \
-          --namespace ack-system \
-          --wait --timeout=300s || echo "DynamoDB controller installation failed or already exists"
+        export SERVICE=dynamodb
+        export RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/${SERVICE}-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+        helm install ack-$SERVICE-controller oci://public.ecr.aws/aws-controllers-k8s/$SERVICE-chart \
+          --namespace $CONTROLLER_NAMESPACE \
+          --create-namespace \
+          --version=$RELEASE_VERSION \
+          --set aws.region={{.AWS_REGION | default "eu-central-1"}} \
+          --set aws.credentials.secretName=aws-creds \
+          --set aws.credentials.secretKey=credentials \
+          --set aws.credentials.profile=playground \
         
         # Install Lambda Controller
         echo "Installing Lambda Controller..."
-        helm install ack-lambda-controller oci://public.ecr.aws/aws-controllers-k8s/lambda-chart \
-          --version=v1.4.2 \
-          --namespace ack-system \
-          --wait --timeout=300s || echo "Lambda controller installation failed or already exists"
+        export SERVICE=lambda
+        export RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/${SERVICE}-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+        helm install ack-$SERVICE-controller oci://public.ecr.aws/aws-controllers-k8s/$SERVICE-chart \
+          --namespace $CONTROLLER_NAMESPACE \
+          --create-namespace \
+          --version=$RELEASE_VERSION \
+          --set aws.region={{.AWS_REGION | default "eu-central-1"}} \
+          --set aws.credentials.secretName=aws-creds \
+          --set aws.credentials.secretKey=credentials \
+          --set aws.credentials.profile=playground \
         
         # Install API Gateway V2 Controller
         echo "Installing API Gateway V2 Controller..."
-        helm install ack-apigatewayv2-controller oci://public.ecr.aws/aws-controllers-k8s/apigatewayv2-chart \
-          --version=v1.0.14 \
-          --namespace ack-system \
-          --wait --timeout=300s || echo "API Gateway V2 controller installation failed or already exists"
+        export SERVICE=apigatewayv2
+        export RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/${SERVICE}-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+        helm install ack-$SERVICE-controller oci://public.ecr.aws/aws-controllers-k8s/$SERVICE-chart \
+          --namespace $CONTROLLER_NAMESPACE \
+          --create-namespace \
+          --version=$RELEASE_VERSION \
+          --set aws.region={{.AWS_REGION | default "eu-central-1"}} \
+          --set aws.credentials.secretName=aws-creds \
+          --set aws.credentials.secretKey=credentials \
+          --set aws.credentials.profile=playground \
         
         # Install S3 Controller
         echo "Installing S3 Controller..."
-        helm install ack-s3-controller oci://public.ecr.aws/aws-controllers-k8s/s3-chart \
-          --version=v1.0.13 \
-          --namespace ack-system \
-          --wait --timeout=300s || echo "S3 controller installation failed or already exists"
+        export SERVICE=s3
+        export RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/${SERVICE}-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+        helm install ack-$SERVICE-controller oci://public.ecr.aws/aws-controllers-k8s/$SERVICE-chart \
+          --namespace $CONTROLLER_NAMESPACE \
+          --create-namespace \
+          --version=$RELEASE_VERSION \
+          --set aws.region={{.AWS_REGION | default "eu-central-1"}} \
+          --set aws.credentials.secretName=aws-creds \
+          --set aws.credentials.secretKey=credentials \
+          --set aws.credentials.profile=playground \
         
         # Install CloudFront Controller
         echo "Installing CloudFront Controller..."
-        helm install ack-cloudfront-controller oci://public.ecr.aws/aws-controllers-k8s/cloudfront-chart \
-          --version=v1.2.11 \
-          --namespace ack-system \
-          --wait --timeout=300s || echo "CloudFront controller installation failed or already exists"
+        export SERVICE=cloudfront
+        export RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/${SERVICE}-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+        helm install ack-$SERVICE-controller oci://public.ecr.aws/aws-controllers-k8s/$SERVICE-chart \
+          --namespace $CONTROLLER_NAMESPACE \
+          --create-namespace \
+          --version=$RELEASE_VERSION \
+          --set aws.region={{.AWS_REGION | default "eu-central-1"}} \
+          --set aws.credentials.secretName=aws-creds \
+          --set aws.credentials.secretKey=credentials \
+          --set aws.credentials.profile=playground \
         
         # Install IAM Controller
         echo "Installing IAM Controller..."
-        helm install ack-iam-controller oci://public.ecr.aws/aws-controllers-k8s/iam-chart \
-          --version=v1.3.8 \
-          --namespace ack-system \
-          --wait --timeout=300s || echo "IAM controller installation failed or already exists"
+        export SERVICE=iam
+        export RELEASE_VERSION=$(curl -sL https://api.github.com/repos/aws-controllers-k8s/${SERVICE}-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+        helm install ack-$SERVICE-controller oci://public.ecr.aws/aws-controllers-k8s/$SERVICE-chart \
+          --namespace $CONTROLLER_NAMESPACE \
+          --create-namespace \
+          --version=$RELEASE_VERSION \
+          --set aws.region={{.AWS_REGION | default "eu-central-1"}} \
+          --set aws.credentials.secretName=aws-creds \
+          --set aws.credentials.secretKey=credentials \
+          --set aws.credentials.profile=playground \
 
   setup:credentials:
     desc: Set up AWS credentials and service accounts
     cmds:
       - |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        echo "Setting up credentials for AWS Account: $ACCOUNT_ID"
-        
-        # Apply service account and RBAC with account ID substitution
-        sed "s/ACCOUNT_ID/$ACCOUNT_ID/g" ack-controllers-setup.yaml | kubectl apply -f -
-        
-        echo "Service accounts and RBAC configured for account: $ACCOUNT_ID"
+        AWS_CREDS=$(cat {{.AWS_CREDENTIALS_PATH}})
+        kubectl -n {{.CONTROLLER_NAMESPACE}} create secret generic aws-creds \
+          --from-literal=credentials="$AWS_CREDS" \
+          --dry-run=client -o yaml | kubectl apply -f -
 
   wait:ready:
     desc: Wait for KRO and ACK controllers to be ready
     cmds:
       - |
         echo "Waiting for Kro to be ready..."
-        kubectl wait --for=condition=Available deployment/kro-controller-manager -n kro-system --timeout=300s
+        kubectl wait --for=condition=Available deployment/kro -n kro-system --timeout=300s
         
         echo "Waiting for ACK controllers to be ready..."
-        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-dynamodb-controller -n ack-system --timeout=300s || echo "DynamoDB controller not ready"
-        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-lambda-controller -n ack-system --timeout=300s || echo "Lambda controller not ready"
-        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-apigatewayv2-controller -n ack-system --timeout=300s || echo "API Gateway controller not ready"
-        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-s3-controller -n ack-system --timeout=300s || echo "S3 controller not ready"
-        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-cloudfront-controller -n ack-system --timeout=300s || echo "CloudFront controller not ready"
-        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-iam-controller -n ack-system --timeout=300s || echo "IAM controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=dynamodb-chart -n ack-system --timeout=300s || echo "DynamoDB controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=lambda-chart -n ack-system --timeout=300s || echo "Lambda controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=apigatewayv2-chart -n ack-system --timeout=300s || echo "API Gateway controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=s3-chart -n ack-system --timeout=300s || echo "S3 controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=cloudfront-chart -n ack-system --timeout=300s || echo "CloudFront controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=iam-chart -n ack-system --timeout=300s || echo "IAM controller not ready"
 
   deploy:
     desc: Deploy infrastructure for specified environment using KRO
@@ -181,9 +220,9 @@ tasks:
     cmds:
       - |
         echo "Cleaning up environment: {{.ENVIRONMENT}}"
-        kubectl delete resourcegroupinstance "user-admin-messaging-{{.ENVIRONMENT}}" --ignore-not-found=true
+        echo "kubectl delete resourcegroupinstance "user-admin-messaging-{{.ENVIRONMENT}}" --ignore-not-found=true"
         echo "Waiting for resources to be cleaned up..."
-        sleep 10
+        echo "sleep 10"
 
   cleanup:all:
     desc: Clean up all KRO resources and uninstall controllers
@@ -199,7 +238,7 @@ tasks:
           ENVIRONMENT: prod
       - |
         echo "Cleaning up ResourceGroup definition..."
-        kubectl delete resourcegroup user-admin-messaging-stack --ignore-not-found=true
+        echo "kubectl delete resourcegroup user-admin-messaging-stack --ignore-not-found=true"
         
         echo "Uninstalling ACK controllers..."
         helm uninstall ack-dynamodb-controller -n ack-system || echo "DynamoDB controller not installed"
@@ -210,7 +249,15 @@ tasks:
         helm uninstall ack-iam-controller -n ack-system || echo "IAM controller not installed"
         
         echo "Uninstalling KRO..."
-        kubectl delete -f https://github.com/kubernetes-sigs/kro/releases/{{.KRO_VERSION}}/download/kro.yaml || echo "KRO not installed"
+
+        export KRO_VERSION=$(curl -sL \
+          https://api.github.com/repos/kubernetes-sigs/kro/releases/latest | \
+          jq -r '.tag_name | ltrimstr("v")'
+        )
+        echo $KRO_VERSION
+
+        helm delete kro oci://registry.k8s.io/kro/charts/kro \
+        --namespace kro-system \
         
         kubectl delete namespace ack-system --ignore-not-found=true
         kubectl delete namespace kro-system --ignore-not-found=true

@@ -1,8 +1,7 @@
 apiVersion: clc.lockhead.cloud/v1alpha1
-kind: UserAdminMessaging
+kind: XUserAdminMessaging
 metadata:
   name: user-admin-messaging-dev
-  namespace: default
 spec:
   environment: dev
   region: eu-central-1

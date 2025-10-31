@@ -57,6 +57,12 @@ tasks:
         kubectl wait --for=condition=Healthy provider/$PROVIDER_NAME --timeout=300s
         echo "Applying provider configuration..."
         kubectl apply -f provider-config.yaml
+        
+        echo "Installing required functions..."
+        kubectl apply -f function-patch-and-transform.yaml
+        echo "Waiting for function to be installed..."
+        kubectl wait --for=condition=Installed function.pkg.crossplane.io/function-patch-and-transform --timeout=180s
+        kubectl wait --for=condition=Healthy function.pkg.crossplane.io/function-patch-and-transform --timeout=180s
 
   wait:ready:
     desc: Wait for Crossplane to be ready
@@ -93,16 +99,23 @@ tasks:
         
         # Apply composite resource definition
         echo "Applying composite resource definition..."
-        kubectl apply -f composite-resource-definition.yaml
+        kubectl apply -f composite-resource-definition.yaml --validate=false || \
+        kubectl replace -f composite-resource-definition.yaml --validate=false
+        
+        # Wait for CRD to be established
+        echo "Waiting for CRD to be established..."
+        kubectl wait --for condition=established --timeout=60s crd/xuseradminmessagings.clc.lockhead.cloud
         
         # Apply composition
         echo "Applying composition..."
-        kubectl apply -f composition.yaml
+        kubectl apply -f composition.yaml --validate=false || \
+        kubectl replace -f composition.yaml --validate=false
         
         # Apply environment-specific claim
         echo "Applying claim for environment: {{.ENVIRONMENT}}"
         if [[ -f "claims/claim-{{.ENVIRONMENT}}.yaml" ]]; then
-          kubectl apply -f "claims/claim-{{.ENVIRONMENT}}.yaml" -n "{{.NAMESPACE}}"
+          kubectl apply -f "claims/claim-{{.ENVIRONMENT}}.yaml" --validate=false || \
+          kubectl replace -f "claims/claim-{{.ENVIRONMENT}}.yaml" --validate=false
         else
           echo "Claim file for environment {{.ENVIRONMENT}} not found. Available: dev, staging, prod"
           exit 1
@@ -121,10 +134,10 @@ tasks:
         kubectl get compositions
         echo ""
         echo "=== Claims ==="
-        kubectl get useradminmessaging -n "{{.NAMESPACE}}"
+        kubectl get xuseradminmessaging
         echo ""
         echo "=== Environment: {{.ENVIRONMENT}} ==="
-        kubectl describe useradminmessaging user-admin-messaging-{{.ENVIRONMENT}} -n "{{.NAMESPACE}}" || echo "Environment {{.ENVIRONMENT}} not found"
+        kubectl describe xuseradminmessaging user-admin-messaging-{{.ENVIRONMENT}} || echo "Environment {{.ENVIRONMENT}} not found"
 
   logs:
     desc: Show Crossplane logs
@@ -138,7 +151,7 @@ tasks:
     cmds:
       - |
         echo "Cleaning up environment: {{.ENVIRONMENT}}"
-        kubectl delete -f "claims/claim-{{.ENVIRONMENT}}.yaml" -n "{{.NAMESPACE}}" --ignore-not-found=true
+        kubectl delete -f "claims/claim-{{.ENVIRONMENT}}.yaml" --ignore-not-found=true
         echo "Waiting for resources to be cleaned up..."
         sleep 10
         kubectl delete composition xuseradminmessaging --ignore-not-found=true
@@ -166,5 +179,5 @@ tasks:
     cmds:
       - |
         echo "Opening shell with kubectl configured..."
-        echo "Use 'kubectl get useradminmessaging' to check your deployments"
+        echo "Use 'kubectl get xuseradminmessaging' to check your deployments"
         bash
