@@ -1,6 +1,6 @@
 # Crossplane V2 Infrastructure for User-Admin Messaging
 
-This directory contains the Crossplane V2 infrastructure definitions converted from the original AWS CDK stack.
+This directory contains the Crossplane V2 infrastructure definitions (scope: Cluster) converted from the original AWS CDK stack.
 
 ## Architecture
 
@@ -24,45 +24,15 @@ The infrastructure includes:
 
 ## Prerequisites
 
-1. Install Crossplane in your Kubernetes cluster:
 ```bash
-helm repo add crossplane-stable https://charts.crossplane.io/stable
-helm repo update
-helm install crossplane crossplane-stable/crossplane --namespace crossplane-system --create-namespace
-```
-
-2. Install the AWS provider:
-```bash
-kubectl apply -f provider-config.yaml
-```
-
-3. Create AWS credentials secret:
-```bash
-kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./aws-credentials.txt
-```
-
-Where `aws-credentials.txt` contains:
-```
-[default]
-aws_access_key_id = YOUR_ACCESS_KEY
-aws_secret_access_key = YOUR_SECRET_KEY
+task setup
 ```
 
 ## Deployment
 
-1. Apply the composite resource definition:
+1. Setup XRD, Composition and XR
 ```bash
-kubectl apply -f composite-resource-definition.yaml
-```
-
-2. Apply the composition:
-```bash
-kubectl apply -f composition.yaml
-```
-
-3. Deploy an environment (e.g., dev):
-```bash
-kubectl apply -f claim-dev.yaml
+task deploy
 ```
 
 ## Monitoring

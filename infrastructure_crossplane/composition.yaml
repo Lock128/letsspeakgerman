@@ -9,18 +9,17 @@ spec:
   compositeTypeRef:
     apiVersion: clc.lockhead.cloud/v1alpha1
     kind: XUserAdminMessaging
-  
   mode: Pipeline
   pipeline:
-    - step: create-resources
+    - step: patch-and-transform
       functionRef:
-        name: function-auto-ready
+        name: crossplane-contrib-function-patch-and-transform
       input:
         apiVersion: pt.fn.crossplane.io/v1beta1
         kind: Resources
         resources:
-          # DynamoDB Table for WebSocket connections
-          websocket-connections-table:
+        # DynamoDB Table for WebSocket connections
+          - name: websocket-connections-table
             base:
               apiVersion: dynamodb.aws.upbound.io/v1beta1
               kind: Table
@@ -57,12 +56,13 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-websocket-connections-%s"
+                      type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.tags.Environment
 
           # IAM Role for Lambda functions
-          lambda-execution-role:
+          - name: lambda-execution-role
             base:
               apiVersion: iam.aws.upbound.io/v1beta1
               kind: Role
@@ -91,9 +91,10 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-lambda-execution-role-%s"
+                      type: Format
 
           # IAM Policy for DynamoDB access
-          dynamodb-policy:
+          - name: dynamodb-policy
             base:
               apiVersion: iam.aws.upbound.io/v1beta1
               kind: Policy
@@ -125,9 +126,10 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-dynamodb-policy-%s"
+                      type: Format
 
           # Connection Manager Lambda Function
-          connection-manager-function:
+          - name: connection-manager-function
             base:
               apiVersion: lambda.aws.upbound.io/v1beta1
               kind: Function
@@ -152,6 +154,7 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-connection-manager-%s"
+                      type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
@@ -159,9 +162,10 @@ spec:
                   - type: string
                     string:
                       fmt: "websocket-connections-%s"
+                      type: Format
 
           # Message Handler Lambda Function
-          message-handler-function:
+          - name: message-handler-function
             base:
               apiVersion: lambda.aws.upbound.io/v1beta1
               kind: Function
@@ -186,6 +190,7 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-message-handler-%s"
+                      type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
@@ -193,9 +198,10 @@ spec:
                   - type: string
                     string:
                       fmt: "websocket-connections-%s"
+                      type: Format
 
           # WebSocket API Gateway
-          websocket-api:
+          - name: websocket-api
             base:
               apiVersion: apigatewayv2.aws.upbound.io/v1beta1
               kind: API
@@ -212,6 +218,7 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-websocket-api-%s"
+                      type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
                 toFieldPath: spec.forProvider.name
@@ -219,9 +226,10 @@ spec:
                   - type: string
                     string:
                       fmt: "user-admin-messaging-websocket-%s"
+                      type: Format
 
           # S3 Bucket for User Interface
-          user-interface-bucket:
+          - name: user-interface-bucket
             base:
               apiVersion: s3.aws.upbound.io/v1beta1
               kind: Bucket
@@ -244,9 +252,10 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-user-interface-bucket-%s"
+                      type: Format
 
           # CloudFront Distribution
-          cloudfront-distribution:
+          - name: cloudfront-distribution
             base:
               apiVersion: cloudfront.aws.upbound.io/v1beta1
               kind: Distribution
@@ -273,3 +282,4 @@ spec:
                   - type: string
                     string:
                       fmt: "crossplane-cloudfront-distribution-%s"
+                      type: Format
