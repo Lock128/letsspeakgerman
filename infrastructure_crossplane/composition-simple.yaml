@@ -1,0 +1,29 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: user-admin-messaging-simple
+  labels:
+    provider: aws
+    service: messaging
+spec:
+  compositeTypeRef:
+    apiVersion: clc.lockhead.cloud/v1alpha1
+    kind: XUserAdminMessaging
+  
+  resources:
+    # S3 Bucket for testing
+    - name: test-bucket
+      base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: Bucket
+        spec:
+          forProvider:
+            region: eu-central-1
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "test-bucket-%s"

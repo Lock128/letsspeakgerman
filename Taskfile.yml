@@ -1,0 +1,193 @@
+version: '3'
+
+vars:
+  KIND_CLUSTER_NAME: user-admin-messaging
+  KUBERNETES_VERSION: v1.34.0
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # Kind cluster management
+  kind:create:
+    desc: Create a Kind cluster for local development
+    cmds:
+      - task: check:ports
+      - |
+        if kind get clusters 2>/dev/null | grep -q "{{.KIND_CLUSTER_NAME}}"; then
+          echo "Cluster {{.KIND_CLUSTER_NAME}} already exists"
+        else
+          echo "Creating Kind cluster: {{.KIND_CLUSTER_NAME}}"
+          kind create cluster --name {{.KIND_CLUSTER_NAME}} --image kindest/node:{{.KUBERNETES_VERSION}} --config kind-config.yaml
+        fi
+      - kubectl cluster-info --context kind-{{.KIND_CLUSTER_NAME}}
+
+  kind:recreate:
+    desc: Delete and recreate the Kind cluster
+    cmds:
+      - task: kind:delete
+      - task: kind:create
+
+  kind:reset:
+    desc: Reset Kind cluster and Docker (nuclear option)
+    cmds:
+      - |
+        echo "Stopping and removing all Kind clusters..."
+        kind delete clusters --all || echo "No clusters to delete"
+        echo "Pruning Docker system..."
+        docker system prune -f
+        echo "Restarting Docker Desktop (if running)..."
+        osascript -e 'quit app "Docker Desktop"' || echo "Docker Desktop not running"
+        sleep 5
+        open -a "Docker Desktop" || echo "Could not restart Docker Desktop"
+        echo "Waiting for Docker to be ready..."
+        sleep 30
+
+  kind:delete:
+    desc: Delete the Kind cluster
+    cmds:
+      - kind delete cluster --name {{.KIND_CLUSTER_NAME}}
+
+  kind:status:
+    desc: Check Kind cluster status
+    cmds:
+      - kind get clusters
+      - kubectl cluster-info --context kind-{{.KIND_CLUSTER_NAME}} || echo "Cluster not running"
+
+  # Crossplane environment
+  crossplane:setup:
+    desc: Set up Kind cluster with Crossplane v2
+    cmds:
+      - task: kind:create
+      - task: crossplane:install
+
+  crossplane:install:
+    desc: Install Crossplane in the current cluster
+    dir: infrastructure_crossplane
+    cmds:
+      - task: setup
+
+  crossplane:deploy:
+    desc: Deploy infrastructure using Crossplane
+    dir: infrastructure_crossplane
+    cmds:
+      - task: deploy
+        vars:
+          ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+
+  crossplane:cleanup:
+    desc: Clean up Crossplane resources
+    dir: infrastructure_crossplane
+    cmds:
+      - task: cleanup
+
+  # KRO/ACK environment
+  kro:setup:
+    desc: Set up Kind cluster with KRO and ACK
+    cmds:
+      - task: kind:create
+      - task: kro:install
+
+  kro:install:
+    desc: Install KRO and ACK in the current cluster
+    dir: infrastructure_kro
+    cmds:
+      - task: setup
+
+  kro:deploy:
+    desc: Deploy infrastructure using KRO and ACK
+    dir: infrastructure_kro
+    cmds:
+      - task: deploy
+        vars:
+          ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+
+  kro:cleanup:
+    desc: Clean up KRO resources
+    dir: infrastructure_kro
+    cmds:
+      - task: cleanup
+
+  # Development helpers
+  dev:logs:
+    desc: Show logs from infrastructure components
+    cmds:
+      - kubectl logs -l app.kubernetes.io/name=crossplane -n crossplane-system --tail=50 || echo "Crossplane not running"
+      - kubectl logs -l app.kubernetes.io/name=kro -n kro-system --tail=50 || echo "KRO not running"
+
+  dev:status:
+    desc: Show status of all infrastructure components
+    cmds:
+      - echo "=== Cluster Info ==="
+      - kubectl cluster-info || echo "No cluster available"
+      - echo ""
+      - echo "=== Crossplane Status ==="
+      - kubectl get providers -A || echo "Crossplane not installed"
+      - echo ""
+      - echo "=== KRO Status ==="
+      - kubectl get resourcegroups -A || echo "KRO not installed"
+      - echo ""
+      - echo "=== ACK Controllers ==="
+      - kubectl get pods -n ack-system || echo "ACK controllers not installed"
+
+  # Cleanup everything
+  cleanup:all:
+    desc: Clean up everything (cluster and resources)
+    cmds:
+      - task: crossplane:cleanup
+      - task: kro:cleanup
+      - task: kind:delete
+
+  # Prerequisites check
+  check:prereqs:
+    desc: Check if all required tools are installed
+    cmds:
+      - |
+        echo "Checking prerequisites..."
+        command -v kind >/dev/null 2>&1 || { echo "❌ kind is required but not installed"; exit 1; }
+        command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl is required but not installed"; exit 1; }
+        command -v helm >/dev/null 2>&1 || { echo "❌ helm is required but not installed"; exit 1; }
+        command -v aws >/dev/null 2>&1 || { echo "❌ aws CLI is required but not installed"; exit 1; }
+        echo "✅ All prerequisites are installed"
+
+  check:ports:
+    desc: Check if required ports are available
+    cmds:
+      - |
+        echo "Checking port availability..."
+        if lsof -i :9080 >/dev/null 2>&1; then
+          echo "⚠️  Port 9080 is in use:"
+          lsof -i :9080
+        else
+          echo "✅ Port 9080 is available"
+        fi
+        
+        if lsof -i :9443 >/dev/null 2>&1; then
+          echo "⚠️  Port 9443 is in use:"
+          lsof -i :9443
+        else
+          echo "✅ Port 9443 is available"
+        fi
+
+  debug:network:
+    desc: Debug network connectivity from Kind cluster
+    cmds:
+      - |
+        echo "=== Testing network connectivity from Kind cluster ==="
+        kubectl run debug-pod --image=busybox --rm -it --restart=Never -- nslookup google.com || echo "DNS resolution failed"
+        kubectl run debug-pod --image=busybox --rm -it --restart=Never -- wget -O- https://registry-1.docker.io/v2/ || echo "Docker registry unreachable"
+        
+  debug:images:
+    desc: Debug image pull issues
+    cmds:
+      - |
+        echo "=== Checking failed pods ==="
+        kubectl get pods -A | grep -E "(ImagePullBackOff|ErrImagePull)" || echo "No image pull errors found"
+        echo ""
+        echo "=== Crossplane system pods ==="
+        kubectl get pods -n crossplane-system
+        echo ""
+        echo "=== Recent events ==="
+        kubectl get events -A --sort-by='.lastTimestamp' | tail -10

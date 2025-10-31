@@ -1,0 +1,170 @@
+version: '3'
+
+vars:
+  CROSSPLANE_VERSION: 2.0.2
+  AWS_PROVIDER_VERSION: v2.1.1
+  NAMESPACE: default
+
+tasks:
+  setup:
+    desc: Set up Crossplane v2 (1.17.x) in the current cluster
+    cmds:
+      - task: install:crossplane
+      - task: install:aws-provider
+      - task: wait:ready
+
+  install:crossplane:
+    desc: Install Crossplane v2 using Helm
+    cmds:
+      - |
+        echo "Installing Crossplane v{{.CROSSPLANE_VERSION}}..."
+        helm repo add crossplane-stable https://charts.crossplane.io/stable
+        helm repo update
+        
+        # Install with explicit image pull policy and registry settings
+        helm install crossplane crossplane-stable/crossplane \
+          --namespace crossplane-system \
+          --create-namespace \
+          --version {{.CROSSPLANE_VERSION}} \
+          --set image.pullPolicy=IfNotPresent \
+          --set webhooks.enabled=true \
+          --wait \
+          --timeout 600s
+        
+        echo "Waiting for Crossplane pods to be ready..."
+        kubectl wait --for=condition=Ready pods -l app=crossplane -n crossplane-system --timeout=300s
+
+  install:aws-provider:
+    desc: Install AWS provider for Crossplane v2
+    cmds:
+      - |
+        echo "Installing AWS provider v{{.AWS_PROVIDER_VERSION}}..."
+        
+        # Try Upbound provider first
+        kubectl apply -f provider.yaml
+        echo "Waiting for Upbound AWS provider to be installed..."
+        if ! kubectl wait --for=condition=Installed provider/upbound-provider-aws --timeout=180s; then
+          echo "Upbound provider failed, trying official Crossplane provider..."
+          kubectl delete provider upbound-provider-aws --ignore-not-found=true
+          kubectl apply -f provider-alternative.yaml
+          kubectl wait --for=condition=Installed provider/provider-aws --timeout=300s
+          PROVIDER_NAME="provider-aws"
+        else
+          PROVIDER_NAME="upbound-provider-aws"
+        fi
+        
+        echo "Waiting for AWS provider to be healthy..."
+        kubectl wait --for=condition=Healthy provider/$PROVIDER_NAME --timeout=300s
+        echo "Applying provider configuration..."
+        kubectl apply -f provider-config.yaml
+
+  wait:ready:
+    desc: Wait for Crossplane to be ready
+    cmds:
+      - |
+        echo "Waiting for Crossplane to be ready..."
+        kubectl wait --for=condition=Ready pods -l app=crossplane -n crossplane-system --timeout=300s
+        echo "Waiting for AWS provider to be healthy..."
+        kubectl wait --for=condition=Healthy provider/upbound-provider-aws --timeout=300s || \
+        kubectl wait --for=condition=Healthy provider/provider-aws --timeout=300s
+
+  setup:credentials:
+    desc: Set up AWS credentials (requires AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars)
+    cmds:
+      - |
+        if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+          echo "Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables"
+          exit 1
+        fi
+        echo "Creating AWS credentials secret..."
+        kubectl create secret generic aws-secret -n crossplane-system \
+          --from-literal=credentials="[default]
+        aws_access_key_id = $AWS_ACCESS_KEY_ID
+        aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+  deploy:
+    desc: Deploy infrastructure for specified environment
+    vars:
+      ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+    cmds:
+      - |
+        echo "Deploying infrastructure for environment: {{.ENVIRONMENT}}"
+        
+        # Apply composite resource definition
+        echo "Applying composite resource definition..."
+        kubectl apply -f composite-resource-definition.yaml
+        
+        # Apply composition
+        echo "Applying composition..."
+        kubectl apply -f composition.yaml
+        
+        # Apply environment-specific claim
+        echo "Applying claim for environment: {{.ENVIRONMENT}}"
+        if [[ -f "claims/claim-{{.ENVIRONMENT}}.yaml" ]]; then
+          kubectl apply -f "claims/claim-{{.ENVIRONMENT}}.yaml" -n "{{.NAMESPACE}}"
+        else
+          echo "Claim file for environment {{.ENVIRONMENT}} not found. Available: dev, staging, prod"
+          exit 1
+        fi
+
+  status:
+    desc: Check deployment status
+    vars:
+      ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+    cmds:
+      - |
+        echo "=== Crossplane Status ==="
+        kubectl get providers
+        echo ""
+        echo "=== Compositions ==="
+        kubectl get compositions
+        echo ""
+        echo "=== Claims ==="
+        kubectl get useradminmessaging -n "{{.NAMESPACE}}"
+        echo ""
+        echo "=== Environment: {{.ENVIRONMENT}} ==="
+        kubectl describe useradminmessaging user-admin-messaging-{{.ENVIRONMENT}} -n "{{.NAMESPACE}}" || echo "Environment {{.ENVIRONMENT}} not found"
+
+  logs:
+    desc: Show Crossplane logs
+    cmds:
+      - kubectl logs -l app=crossplane -n crossplane-system --tail=50
+
+  cleanup:
+    desc: Clean up Crossplane resources
+    vars:
+      ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+    cmds:
+      - |
+        echo "Cleaning up environment: {{.ENVIRONMENT}}"
+        kubectl delete -f "claims/claim-{{.ENVIRONMENT}}.yaml" -n "{{.NAMESPACE}}" --ignore-not-found=true
+        echo "Waiting for resources to be cleaned up..."
+        sleep 10
+        kubectl delete composition xuseradminmessaging --ignore-not-found=true
+        kubectl delete xrd xuseradminmessagings.platform.example.com --ignore-not-found=true
+
+  cleanup:all:
+    desc: Clean up all Crossplane resources and uninstall
+    cmds:
+      - task: cleanup
+        vars:
+          ENVIRONMENT: dev
+      - task: cleanup
+        vars:
+          ENVIRONMENT: staging  
+      - task: cleanup
+        vars:
+          ENVIRONMENT: prod
+      - |
+        echo "Uninstalling Crossplane..."
+        helm uninstall crossplane -n crossplane-system || echo "Crossplane not installed"
+        kubectl delete namespace crossplane-system --ignore-not-found=true
+
+  dev:shell:
+    desc: Open a shell with kubectl configured for this environment
+    cmds:
+      - |
+        echo "Opening shell with kubectl configured..."
+        echo "Use 'kubectl get useradminmessaging' to check your deployments"
+        bash

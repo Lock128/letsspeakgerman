@@ -1,11 +1,4 @@
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
-metadata:
-  name: provider-aws
-spec:
-  package: xpkg.upbound.io/crossplane-contrib/provider-aws:v0.44.0
----
-apiVersion: aws.crossplane.io/v1beta1
+apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
@@ -15,4 +8,4 @@ spec:
     secretRef:
       namespace: crossplane-system
       name: aws-secret
-      key: creds
+      key: credentials

@@ -1,0 +1,224 @@
+version: '3'
+
+vars:
+  KRO_VERSION: latest
+  NAMESPACE: default
+
+tasks:
+  setup:
+    desc: Set up KRO and ACK controllers in the current cluster
+    cmds:
+      - task: install:kro
+      - task: install:ack-controllers
+      - task: wait:ready
+
+  install:kro:
+    desc: Install Kro (Kube Resource Orchestrator)
+    cmds:
+      - |
+        echo "Installing Kro..."
+        kubectl apply -f https://github.com/kubernetes-sigs/kro/releases/{{.KRO_VERSION}}/download/kro.yaml
+        echo "Waiting for Kro to be ready..."
+        kubectl wait --for=condition=Available deployment/kro-controller-manager -n kro-system --timeout=300s
+
+  install:ack-controllers:
+    desc: Install ACK (AWS Controllers for Kubernetes) controllers
+    cmds:
+      - |
+        echo "Creating ACK system namespace..."
+        kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f -
+        
+        echo "Installing ACK Controllers using Helm..."
+        
+        # Add AWS Controllers Helm repository
+        helm repo add aws-controllers https://aws-controllers-k8s.github.io/aws-controllers-k8s
+        helm repo update
+        
+        # Install DynamoDB Controller
+        echo "Installing DynamoDB Controller..."
+        helm install ack-dynamodb-controller oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \
+          --version=v1.2.10 \
+          --namespace ack-system \
+          --wait --timeout=300s || echo "DynamoDB controller installation failed or already exists"
+        
+        # Install Lambda Controller
+        echo "Installing Lambda Controller..."
+        helm install ack-lambda-controller oci://public.ecr.aws/aws-controllers-k8s/lambda-chart \
+          --version=v1.4.2 \
+          --namespace ack-system \
+          --wait --timeout=300s || echo "Lambda controller installation failed or already exists"
+        
+        # Install API Gateway V2 Controller
+        echo "Installing API Gateway V2 Controller..."
+        helm install ack-apigatewayv2-controller oci://public.ecr.aws/aws-controllers-k8s/apigatewayv2-chart \
+          --version=v1.0.14 \
+          --namespace ack-system \
+          --wait --timeout=300s || echo "API Gateway V2 controller installation failed or already exists"
+        
+        # Install S3 Controller
+        echo "Installing S3 Controller..."
+        helm install ack-s3-controller oci://public.ecr.aws/aws-controllers-k8s/s3-chart \
+          --version=v1.0.13 \
+          --namespace ack-system \
+          --wait --timeout=300s || echo "S3 controller installation failed or already exists"
+        
+        # Install CloudFront Controller
+        echo "Installing CloudFront Controller..."
+        helm install ack-cloudfront-controller oci://public.ecr.aws/aws-controllers-k8s/cloudfront-chart \
+          --version=v1.2.11 \
+          --namespace ack-system \
+          --wait --timeout=300s || echo "CloudFront controller installation failed or already exists"
+        
+        # Install IAM Controller
+        echo "Installing IAM Controller..."
+        helm install ack-iam-controller oci://public.ecr.aws/aws-controllers-k8s/iam-chart \
+          --version=v1.3.8 \
+          --namespace ack-system \
+          --wait --timeout=300s || echo "IAM controller installation failed or already exists"
+
+  setup:credentials:
+    desc: Set up AWS credentials and service accounts
+    cmds:
+      - |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        echo "Setting up credentials for AWS Account: $ACCOUNT_ID"
+        
+        # Apply service account and RBAC with account ID substitution
+        sed "s/ACCOUNT_ID/$ACCOUNT_ID/g" ack-controllers-setup.yaml | kubectl apply -f -
+        
+        echo "Service accounts and RBAC configured for account: $ACCOUNT_ID"
+
+  wait:ready:
+    desc: Wait for KRO and ACK controllers to be ready
+    cmds:
+      - |
+        echo "Waiting for Kro to be ready..."
+        kubectl wait --for=condition=Available deployment/kro-controller-manager -n kro-system --timeout=300s
+        
+        echo "Waiting for ACK controllers to be ready..."
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-dynamodb-controller -n ack-system --timeout=300s || echo "DynamoDB controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-lambda-controller -n ack-system --timeout=300s || echo "Lambda controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-apigatewayv2-controller -n ack-system --timeout=300s || echo "API Gateway controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-s3-controller -n ack-system --timeout=300s || echo "S3 controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-cloudfront-controller -n ack-system --timeout=300s || echo "CloudFront controller not ready"
+        kubectl wait --for=condition=Available deployment -l app.kubernetes.io/name=ack-iam-controller -n ack-system --timeout=300s || echo "IAM controller not ready"
+
+  deploy:
+    desc: Deploy infrastructure for specified environment using KRO
+    vars:
+      ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+    cmds:
+      - |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        echo "Deploying infrastructure for environment: {{.ENVIRONMENT}}"
+        echo "AWS Account ID: $ACCOUNT_ID"
+        
+        # Deploy IAM roles first
+        echo "Deploying IAM roles..."
+        kubectl apply -f iam-roles.yaml
+        
+        # Deploy the ResourceGroup definition
+        echo "Deploying ResourceGroup definition..."
+        kubectl apply -f resource-group.yaml
+        
+        # Wait for ResourceGroup to be ready
+        echo "Waiting for ResourceGroup to be ready..."
+        kubectl wait --for=condition=Ready resourcegroup/user-admin-messaging-stack --timeout=60s
+        
+        # Deploy environment-specific instance
+        INSTANCE_FILE="instances/{{.ENVIRONMENT}}-instance.yaml"
+        if [[ ! -f "$INSTANCE_FILE" ]]; then
+          echo "Error: Instance file $INSTANCE_FILE not found"
+          exit 1
+        fi
+        
+        # Create a temporary file with substituted values
+        TEMP_INSTANCE_FILE=$(mktemp)
+        sed "s/ACCOUNT_ID/$ACCOUNT_ID/g" "$INSTANCE_FILE" > "$TEMP_INSTANCE_FILE"
+        
+        # Deploy the instance
+        echo "Deploying {{.ENVIRONMENT}} instance..."
+        kubectl apply -f "$TEMP_INSTANCE_FILE"
+        
+        # Clean up temporary file
+        rm "$TEMP_INSTANCE_FILE"
+        
+        echo "Waiting for resources to be created..."
+        sleep 10
+
+  status:
+    desc: Check deployment status
+    vars:
+      ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+    cmds:
+      - |
+        echo "=== KRO Status ==="
+        kubectl get resourcegroups
+        echo ""
+        echo "=== ACK Controllers ==="
+        kubectl get pods -n ack-system
+        echo ""
+        echo "=== Resource Group Instances ==="
+        kubectl get resourcegroupinstance
+        echo ""
+        echo "=== Environment: {{.ENVIRONMENT}} ==="
+        kubectl get resourcegroupinstance "user-admin-messaging-{{.ENVIRONMENT}}" -o yaml || echo "Environment {{.ENVIRONMENT}} not found"
+
+  logs:
+    desc: Show KRO and ACK controller logs
+    cmds:
+      - |
+        echo "=== KRO Logs ==="
+        kubectl logs -l app.kubernetes.io/name=kro -n kro-system --tail=20
+        echo ""
+        echo "=== ACK Controller Logs ==="
+        kubectl logs -l app.kubernetes.io/part-of=ack-system -n ack-system --tail=20
+
+  cleanup:
+    desc: Clean up KRO resources for specified environment
+    vars:
+      ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
+    cmds:
+      - |
+        echo "Cleaning up environment: {{.ENVIRONMENT}}"
+        kubectl delete resourcegroupinstance "user-admin-messaging-{{.ENVIRONMENT}}" --ignore-not-found=true
+        echo "Waiting for resources to be cleaned up..."
+        sleep 10
+
+  cleanup:all:
+    desc: Clean up all KRO resources and uninstall controllers
+    cmds:
+      - task: cleanup
+        vars:
+          ENVIRONMENT: dev
+      - task: cleanup
+        vars:
+          ENVIRONMENT: staging
+      - task: cleanup
+        vars:
+          ENVIRONMENT: prod
+      - |
+        echo "Cleaning up ResourceGroup definition..."
+        kubectl delete resourcegroup user-admin-messaging-stack --ignore-not-found=true
+        
+        echo "Uninstalling ACK controllers..."
+        helm uninstall ack-dynamodb-controller -n ack-system || echo "DynamoDB controller not installed"
+        helm uninstall ack-lambda-controller -n ack-system || echo "Lambda controller not installed"
+        helm uninstall ack-apigatewayv2-controller -n ack-system || echo "API Gateway controller not installed"
+        helm uninstall ack-s3-controller -n ack-system || echo "S3 controller not installed"
+        helm uninstall ack-cloudfront-controller -n ack-system || echo "CloudFront controller not installed"
+        helm uninstall ack-iam-controller -n ack-system || echo "IAM controller not installed"
+        
+        echo "Uninstalling KRO..."
+        kubectl delete -f https://github.com/kubernetes-sigs/kro/releases/{{.KRO_VERSION}}/download/kro.yaml || echo "KRO not installed"
+        
+        kubectl delete namespace ack-system --ignore-not-found=true
+        kubectl delete namespace kro-system --ignore-not-found=true
+
+  dev:shell:
+    desc: Open a shell with kubectl configured for this environment
+    cmds:
+      - |
+        echo "Opening shell with kubectl configured..."
+        echo "Use 'kubectl get resourcegroupinstance' to check your deployments"
+        bash
