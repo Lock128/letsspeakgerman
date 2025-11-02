@@ -7,6 +7,7 @@ spec:
   names:
     kind: XUserAdminMessaging
     plural: xuseradminmessagings
+  scope: Cluster
   versions:
   - name: v1alpha1
     served: true

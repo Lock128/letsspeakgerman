@@ -2,15 +2,15 @@ version: '3'
 
 vars:
   CROSSPLANE_VERSION: 2.0.2
-  AWS_PROVIDER_VERSION: v2.1.1
+  AWS_PROVIDER_VERSION: v2.1.0
   NAMESPACE: default
 
 tasks:
   setup:
-    desc: Set up Crossplane v2 (1.17.x) in the current cluster
+    desc: Set up Crossplane v2 in the current context
     cmds:
       - task: install:crossplane
-      - task: install:aws-provider
+      - task: install:packages
       - task: wait:ready
 
   install:crossplane:
@@ -20,64 +20,39 @@ tasks:
         echo "Installing Crossplane v{{.CROSSPLANE_VERSION}}..."
         helm repo add crossplane-stable https://charts.crossplane.io/stable
         helm repo update
-        
-        # Install with explicit image pull policy and registry settings
+
+        # Install
         helm install crossplane crossplane-stable/crossplane \
           --namespace crossplane-system \
           --create-namespace \
           --version {{.CROSSPLANE_VERSION}} \
-          --set image.pullPolicy=IfNotPresent \
-          --set webhooks.enabled=true \
           --wait \
           --timeout 600s
-        
-        echo "Waiting for Crossplane pods to be ready..."
-        kubectl wait --for=condition=Ready pods -l app=crossplane -n crossplane-system --timeout=300s
 
-  install:aws-provider:
+  install:packages:
     desc: Install AWS provider for Crossplane v2
     cmds:
       - |
-        echo "Installing AWS provider v{{.AWS_PROVIDER_VERSION}}..."
-        
-        # Try Upbound provider first
-        kubectl apply -f provider.yaml
-        echo "Waiting for Upbound AWS provider to be installed..."
-        if ! kubectl wait --for=condition=Installed provider/upbound-provider-aws --timeout=180s; then
-          echo "Upbound provider failed, trying official Crossplane provider..."
-          kubectl delete provider upbound-provider-aws --ignore-not-found=true
-          kubectl apply -f provider-alternative.yaml
-          kubectl wait --for=condition=Installed provider/provider-aws --timeout=300s
-          PROVIDER_NAME="provider-aws"
-        else
-          PROVIDER_NAME="upbound-provider-aws"
-        fi
-        
-        echo "Waiting for AWS provider to be healthy..."
-        kubectl wait --for=condition=Healthy provider/$PROVIDER_NAME --timeout=300s
-        echo "Applying provider configuration..."
-        kubectl apply -f provider-config.yaml
-        
-        echo "Installing required functions..."
-        kubectl apply -f function-patch-and-transform.yaml
-        echo "Waiting for function to be installed..."
-        kubectl wait --for=condition=Installed function.pkg.crossplane.io/function-patch-and-transform --timeout=180s
-        kubectl wait --for=condition=Healthy function.pkg.crossplane.io/function-patch-and-transform --timeout=180s
+        echo "Installing Crossplane Packages"
+
+        kubectl apply -f providers.yaml
+        kubectl apply -f functions.yaml
 
   wait:ready:
     desc: Wait for Crossplane to be ready
     cmds:
       - |
-        echo "Waiting for Crossplane to be ready..."
-        kubectl wait --for=condition=Ready pods -l app=crossplane -n crossplane-system --timeout=300s
-        echo "Waiting for AWS provider to be healthy..."
-        kubectl wait --for=condition=Healthy provider/upbound-provider-aws --timeout=300s || \
-        kubectl wait --for=condition=Healthy provider/provider-aws --timeout=300s
+        kubectl wait provider.pkg --all --for=condition=Healthy --timeout 5m
+        kubectl wait provider.pkg --all --for=condition=Installed --timeout 5m
+        kubectl wait function.pkg --all --for=condition=Healthy --timeout 5m
+        kubectl wait function.pkg --all --for=condition=Installed --timeout 5m
 
-  setup:credentials:
-    desc: Set up AWS credentials (requires AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars)
+  setup:providerconfigs:
+    desc: Set up providerconfigs
     cmds:
       - |
+        kubectl apply -f provider-config.yaml
+
         if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
           echo "Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables"
           exit 1
@@ -96,28 +71,28 @@ tasks:
     cmds:
       - |
         echo "Deploying infrastructure for environment: {{.ENVIRONMENT}}"
-        
+
         # Apply composite resource definition
         echo "Applying composite resource definition..."
-        kubectl apply -f composite-resource-definition.yaml --validate=false || \
-        kubectl replace -f composite-resource-definition.yaml --validate=false
-        
+        kubectl apply -f xrd.yaml --validate=false || \
+        kubectl replace -f xrd.yaml --validate=false
+
         # Wait for CRD to be established
         echo "Waiting for CRD to be established..."
         kubectl wait --for condition=established --timeout=60s crd/xuseradminmessagings.clc.lockhead.cloud
-        
+
         # Apply composition
         echo "Applying composition..."
         kubectl apply -f composition.yaml --validate=false || \
         kubectl replace -f composition.yaml --validate=false
-        
+
         # Apply environment-specific claim
-        echo "Applying claim for environment: {{.ENVIRONMENT}}"
-        if [[ -f "claims/claim-{{.ENVIRONMENT}}.yaml" ]]; then
-          kubectl apply -f "claims/claim-{{.ENVIRONMENT}}.yaml" --validate=false || \
-          kubectl replace -f "claims/claim-{{.ENVIRONMENT}}.yaml" --validate=false
+        echo "Applying xr scope cluster for environment: {{.ENVIRONMENT}}"
+        if [[ -f "xrs/xr-{{.ENVIRONMENT}}.yaml" ]]; then
+          kubectl apply -f "xrs/xr-{{.ENVIRONMENT}}.yaml" --validate=false || \
+          kubectl replace -f "xrs/xr-{{.ENVIRONMENT}}.yaml" --validate=false
         else
-          echo "Claim file for environment {{.ENVIRONMENT}} not found. Available: dev, staging, prod"
+          echo "XR file for environment {{.ENVIRONMENT}} not found. Available: dev, staging, prod"
           exit 1
         fi
 
@@ -127,13 +102,10 @@ tasks:
       ENVIRONMENT: '{{.ENVIRONMENT | default "dev"}}'
     cmds:
       - |
-        echo "=== Crossplane Status ==="
-        kubectl get providers
+        echo "=== Crossplane Package Status ==="
+        kubectl get pkgrev
         echo ""
-        echo "=== Compositions ==="
-        kubectl get compositions
-        echo ""
-        echo "=== Claims ==="
+        echo "=== XRs Scope Cluster ==="
         kubectl get xuseradminmessaging
         echo ""
         echo "=== Environment: {{.ENVIRONMENT}} ==="
@@ -151,11 +123,7 @@ tasks:
     cmds:
       - |
         echo "Cleaning up environment: {{.ENVIRONMENT}}"
-        kubectl delete -f "claims/claim-{{.ENVIRONMENT}}.yaml" --ignore-not-found=true
-        echo "Waiting for resources to be cleaned up..."
-        sleep 10
-        kubectl delete composition xuseradminmessaging --ignore-not-found=true
-        kubectl delete xrd xuseradminmessagings.platform.example.com --ignore-not-found=true
+        kubectl delete -f "xrs/xr-{{.ENVIRONMENT}}.yaml" --ignore-not-found=true
 
   cleanup:all:
     desc: Clean up all Crossplane resources and uninstall
@@ -165,11 +133,19 @@ tasks:
           ENVIRONMENT: dev
       - task: cleanup
         vars:
-          ENVIRONMENT: staging  
+          ENVIRONMENT: staging
       - task: cleanup
         vars:
           ENVIRONMENT: prod
       - |
+        echo "Uninstalling Compositions..."
+        kubectl delete -f compositon.yaml
+        echo "Uninstalling XRDs..."
+        kubectl delete -f xrd.yaml
+        echo "Uninstalling Packages..."
+        kubectl delete -f functions.yaml
+        kubectl delete -f provider-config.yaml
+        kubectl delete -f providers.yaml
         echo "Uninstalling Crossplane..."
         helm uninstall crossplane -n crossplane-system || echo "Crossplane not installed"
         kubectl delete namespace crossplane-system --ignore-not-found=true
