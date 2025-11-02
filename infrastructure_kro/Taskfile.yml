@@ -277,8 +277,7 @@ tasks:
         )
         echo $KRO_VERSION
 
-        helm delete kro oci://registry.k8s.io/kro/charts/kro \
-        --namespace kro-system \
+        helm uninstall kro --namespace kro-system || echo "KRO not installed"
         
         kubectl delete namespace ack-system --ignore-not-found=true
         kubectl delete namespace kro-system --ignore-not-found=true

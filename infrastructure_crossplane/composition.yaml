@@ -21,21 +21,21 @@ spec:
         # DynamoDB Table for WebSocket connections
           - name: websocket-connections-table
             base:
-              apiVersion: dynamodb.aws.upbound.io/v1beta1
+              apiVersion: dynamodb.aws.m.upbound.io/v1beta1
               kind: Table
               spec:
                 forProvider:
                   region: eu-central-1
                   billingMode: PAY_PER_REQUEST
-                  attribute:
-                    - name: connectionId
-                      type: S
-                    - name: connectionType
-                      type: S
+                  attributeDefinitions:
+                    - attributeName: connectionId
+                      attributeType: S
+                    - attributeName: connectionType
+                      attributeType: S
                   keySchema:
                     - attributeName: connectionId
                       keyType: HASH
-                  globalSecondaryIndex:
+                  globalSecondaryIndexes:
                     - indexName: ConnectionTypeIndex
                       keySchema:
                         - attributeName: connectionType
@@ -64,11 +64,11 @@ spec:
           # IAM Role for Lambda functions
           - name: lambda-execution-role
             base:
-              apiVersion: iam.aws.upbound.io/v1beta1
+              apiVersion: iam.aws.m.upbound.io/v1beta1
               kind: Role
               spec:
                 forProvider:
-                  assumeRolePolicy: |
+                  assumeRolePolicyDocument: |
                     {
                       "Version": "2012-10-17",
                       "Statement": [
@@ -81,8 +81,6 @@ spec:
                         }
                       ]
                     }
-                  managedPolicyArns:
-                    - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -96,11 +94,11 @@ spec:
           # IAM Policy for DynamoDB access
           - name: dynamodb-policy
             base:
-              apiVersion: iam.aws.upbound.io/v1beta1
+              apiVersion: iam.aws.m.upbound.io/v1beta1
               kind: Policy
               spec:
                 forProvider:
-                  policy: |
+                  document: |
                     {
                       "Version": "2012-10-17",
                       "Statement": [
@@ -131,13 +129,13 @@ spec:
           # Connection Manager Lambda Function
           - name: connection-manager-function
             base:
-              apiVersion: lambda.aws.upbound.io/v1beta1
+              apiVersion: lambda.aws.m.upbound.io/v1beta1
               kind: Function
               spec:
                 forProvider:
                   region: eu-central-1
                   runtime: nodejs22.x
-                  handler: connection-manager.handler
+                  handler: index.handler
                   code:
                     zipFile: |
                       exports.handler = async (event) => {
@@ -145,7 +143,7 @@ spec:
                         return { statusCode: 200 };
                       };
                   environment:
-                    variables: {}
+                    - variables: {}
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -157,7 +155,7 @@ spec:
                       type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
-                toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
+                toFieldPath: spec.forProvider.environment[0].variables.CONNECTIONS_TABLE_NAME
                 transforms:
                   - type: string
                     string:
@@ -167,13 +165,13 @@ spec:
           # Message Handler Lambda Function
           - name: message-handler-function
             base:
-              apiVersion: lambda.aws.upbound.io/v1beta1
+              apiVersion: lambda.aws.m.upbound.io/v1beta1
               kind: Function
               spec:
                 forProvider:
                   region: eu-central-1
                   runtime: nodejs22.x
-                  handler: message-handler.handler
+                  handler: index.handler
                   code:
                     zipFile: |
                       exports.handler = async (event) => {
@@ -181,7 +179,7 @@ spec:
                         return { statusCode: 200 };
                       };
                   environment:
-                    variables: {}
+                    - variables: {}
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -193,7 +191,7 @@ spec:
                       type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
-                toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
+                toFieldPath: spec.forProvider.environment[0].variables.CONNECTIONS_TABLE_NAME
                 transforms:
                   - type: string
                     string:
@@ -203,7 +201,7 @@ spec:
           # WebSocket API Gateway
           - name: websocket-api
             base:
-              apiVersion: apigatewayv2.aws.upbound.io/v1beta1
+              apiVersion: apigatewayv2.aws.m.upbound.io/v1beta1
               kind: API
               spec:
                 forProvider:
@@ -231,19 +229,11 @@ spec:
           # S3 Bucket for User Interface
           - name: user-interface-bucket
             base:
-              apiVersion: s3.aws.upbound.io/v1beta1
+              apiVersion: s3.aws.m.upbound.io/v1beta1
               kind: Bucket
               spec:
                 forProvider:
                   region: eu-central-1
-                  website:
-                    - indexDocument: index.html
-                      errorDocument: error.html
-                  publicAccessBlock:
-                    - blockPublicAcls: true
-                      blockPublicPolicy: false
-                      ignorePublicAcls: true
-                      restrictPublicBuckets: false
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -257,23 +247,13 @@ spec:
           # CloudFront Distribution
           - name: cloudfront-distribution
             base:
-              apiVersion: cloudfront.aws.upbound.io/v1beta1
+              apiVersion: cloudfront.aws.m.upbound.io/v1beta1
               kind: Distribution
               spec:
                 forProvider:
                   distributionConfig:
                     enabled: true
                     defaultRootObject: index.html
-                    priceClass: PriceClass_100
-                    customErrorResponse:
-                      - errorCode: 404
-                        responseCode: 200
-                        responsePagePath: /index.html
-                        errorCachingMinTtl: 1800
-                      - errorCode: 403
-                        responseCode: 200
-                        responsePagePath: /index.html
-                        errorCachingMinTtl: 1800
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
