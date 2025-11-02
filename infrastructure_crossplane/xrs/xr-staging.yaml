@@ -2,6 +2,7 @@ apiVersion: clc.lockhead.cloud/v1alpha1
 kind: XUserAdminMessaging
 metadata:
   name: user-admin-messaging-crossplane-staging
+  namespace: default
 spec:
   environment: staging
   region: eu-central-1

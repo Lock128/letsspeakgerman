@@ -3,11 +3,12 @@ kind: CompositeResourceDefinition
 metadata:
   name: xuseradminmessagings.clc.lockhead.cloud
 spec:
+  scope: Namespaced
   group: clc.lockhead.cloud
   names:
     kind: XUserAdminMessaging
     plural: xuseradminmessagings
-  scope: Cluster
+  #scope: Cluster
   versions:
   - name: v1alpha1
     served: true

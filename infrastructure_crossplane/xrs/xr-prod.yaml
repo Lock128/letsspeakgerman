@@ -2,6 +2,7 @@ apiVersion: clc.lockhead.cloud/v1alpha1
 kind: XUserAdminMessaging
 metadata:
   name: user-admin-messaging-crossplane-prod
+  namespace: default
 spec:
   environment: prod
   region: eu-central-1
