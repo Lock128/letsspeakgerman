@@ -35,6 +35,12 @@ task setup
 task deploy
 ```
 
+### Verification
+
+```bash
+crossplane beta trace XUserAdminMessaging user-admin-messaging-crossplane-dev -o wide
+```
+
 ## Monitoring
 
 Check the status of your deployment:

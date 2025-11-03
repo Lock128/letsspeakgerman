@@ -44,6 +44,9 @@ spec:
                   tags:
                     Environment: dev
                     Project: user-admin-messaging
+                providerConfigRef:
+                  name: aws-provider
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -77,6 +80,9 @@ spec:
                         }
                       ]
                     }
+                providerConfigRef:
+                  name: aws-provider
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -112,6 +118,9 @@ spec:
                         }
                       ]
                     }
+                providerConfigRef:
+                  name: aws-provider
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -140,6 +149,9 @@ spec:
                   #    };
                   environment:
                     variables: {}
+                providerConfigRef:
+                  name: aws-provider
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -176,6 +188,9 @@ spec:
                   #    };
                   environment:
                     variables: {}
+                providerConfigRef:
+                  name: aws-provider
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -204,6 +219,9 @@ spec:
                   region: eu-central-1
                   protocolType: WEBSOCKET
                   routeSelectionExpression: $request.body.action
+                providerConfigRef:
+                  name: aws-provider 
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -230,6 +248,9 @@ spec:
               spec:
                 forProvider:
                   region: eu-central-1
+                providerConfigRef:
+                  name: aws-provider
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -248,6 +269,52 @@ spec:
               spec:
                 forProvider:
                   defaultRootObject: index.html
+                  defaultCacheBehavior:
+                    allowedMethods:
+                      - DELETE
+                      - GET
+                      - HEAD
+                      - OPTIONS
+                      - PATCH
+                      - POST
+                      - PUT
+                    cachedMethods:
+                      - GET
+                      - HEAD
+                    defaultTtl: 3600
+                    forwardedValues:
+                      cookies:
+                        forward: none
+                      queryString: false
+                    maxTtl: 86400
+                    minTtl: 0
+                    targetOriginId: customOrigin
+                    viewerProtocolPolicy: allow-all
+                  enabled: true
+                  origin:
+                  - customOriginConfig:
+                      httpPort: 80
+                      httpsPort: 443
+                      originKeepaliveTimeout: 5
+                      originProtocolPolicy: https-only
+                      originReadTimeout: 10
+                      originSslProtocols:
+                        - TLSv1.2
+                    domainName: lockhead.cloud
+                    originId: customOrigin
+                  viewerCertificate:
+                    cloudfrontDefaultCertificate: true
+                  restrictions:
+                    geoRestriction:
+                      locations:
+                        - US
+                        - CA
+                        - GB
+                        - DE
+                      restrictionType: whitelist
+                providerConfigRef:
+                  name: aws-provider
+                  kind: ProviderConfig
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment

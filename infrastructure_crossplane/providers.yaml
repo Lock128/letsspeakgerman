@@ -2,6 +2,7 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: crossplane-contrib-provider-family-aws
+  namespace: default
 spec:
   package: xpkg.crossplane.io/crossplane-contrib/provider-family-aws:v2.1.0
   packagePullPolicy: IfNotPresent
@@ -10,6 +11,7 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: crossplane-contrib-provider-aws-iam
+  namespace: default
 spec:
   package: xpkg.crossplane.io/crossplane-contrib/provider-aws-iam:v2.1.0
   packagePullPolicy: IfNotPresent
@@ -18,6 +20,7 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: crossplane-contrib-provider-aws-dynamodb
+  namespace: default
 spec:
   package: xpkg.crossplane.io/crossplane-contrib/provider-aws-dynamodb:v2.1.0
   packagePullPolicy: IfNotPresent
@@ -26,6 +29,7 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: crossplane-contrib-provider-aws-lambda
+  namespace: default
 spec:
   package: xpkg.crossplane.io/crossplane-contrib/provider-aws-lambda:v2.1.0
   packagePullPolicy: IfNotPresent
@@ -34,6 +38,7 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: crossplane-contrib-provider-aws-apigatewayv2
+  namespace: default
 spec:
   package: xpkg.crossplane.io/crossplane-contrib/provider-aws-apigatewayv2:v2.1.0
   packagePullPolicy: IfNotPresent
@@ -42,6 +47,7 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: crossplane-contrib-provider-aws-s3
+  namespace: default
 spec:
   package: xpkg.crossplane.io/crossplane-contrib/provider-aws-s3:v2.1.0
   packagePullPolicy: IfNotPresent
@@ -50,6 +56,8 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: crossplane-contrib-provider-aws-cloudfront
+  namespace: default
 spec:
   package: xpkg.crossplane.io/crossplane-contrib/provider-aws-cloudfront:v2.1.0
   packagePullPolicy: IfNotPresent
+
