@@ -38,6 +38,9 @@ tasks:
         echo "Creating ACK system namespace..."
         kubectl create namespace ack-system --dry-run=client -o yaml | kubectl apply -f -
         export CONTROLLER_NAMESPACE=ack-system
+
+        task setup:credentials
+
         echo "Installing ACK Controllers using Helm with OCI registries..."
         
         # Install DynamoDB Controller
@@ -121,17 +124,19 @@ tasks:
   setup:credentials:
     desc: Set up AWS credentials and service accounts
     cmds:
-      - |
-        AWS_CREDS=$(cat {{.AWS_CREDENTIALS_PATH}})
-        kubectl -n {{.CONTROLLER_NAMESPACE}} create secret generic aws-creds \
-          --from-literal=credentials="$AWS_CREDS" \
+      - |         
+        if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+          echo "Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables"
+          exit 1
+        fi
+        echo "Creating AWS credentials secret..."
+        kubectl create secret generic aws-creds -n {{.CONTROLLER_NAMESPACE}} \
+          --from-literal=credentials="
+        [playground]
+        aws_access_key_id = $AWS_ACCESS_KEY_ID
+        aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
+        aws_session_token = $AWS_SESSION_TOKEN" \
           --dry-run=client -o yaml | kubectl apply -f -
-
-        AWS_CREDS=$(cat {{.AWS_CREDENTIALS_PATH}})
-        kubectl create secret generic aws-creds \
-          --from-literal=credentials="$AWS_CREDS" \
-          --dry-run=client -o yaml | kubectl apply -f -          
-
   wait:ready:
     desc: Wait for KRO and ACK controllers to be ready
     cmds:
