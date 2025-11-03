@@ -59,12 +59,25 @@ tasks:
         fi
         echo "Creating AWS credentials secret..."
         kubectl create secret generic aws-secret -n default \
-          --from-literal=credentials="[default]
+          --from-literal=credentials="
+        [default]
         aws_access_key_id = $AWS_ACCESS_KEY_ID
         aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
-        aws_aws_session_token = $AWS_SESSION_TOKEN" \
+        aws_session_token = $AWS_SESSION_TOKEN" \
           --dry-run=client -o yaml | kubectl apply -f -
-
+  trace:
+    desc: Trace Crossplane resources
+    cmds:
+      - |
+        #kubectl get all -n crossplane-system
+        crossplane beta trace XUserAdminMessaging user-admin-messaging-crossplane-dev -o wide
+  reapply:
+    desc: Reapply xr
+    cmds:
+      - |
+        kubectl apply -f composition.yaml
+        kubectl delete -f xrs/xr-dev.yaml
+        kubectl apply -f xrs/xr-dev.yaml
   deploy:
     desc: Deploy infrastructure for specified environment
     vars:
