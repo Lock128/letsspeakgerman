@@ -28,22 +28,17 @@ spec:
                 forProvider:
                   region: eu-central-1
                   billingMode: PAY_PER_REQUEST
-                  attributeDefinitions:
-                    - attributeName: connectionId
-                      attributeType: S
-                    - attributeName: connectionType
-                      attributeType: S
-                  keySchema:
-                    - attributeName: connectionId
-                      keyType: HASH
-                  globalSecondaryIndexes:
-                    - indexName: ConnectionTypeIndex
-                      keySchema:
-                        - attributeName: connectionType
-                          keyType: HASH
-                      projection:
-                        projectionType: ALL
-                  timeToLiveSpecification:
+                  attribute:
+                    - name: connectionId
+                      type: S
+                    - name: connectionType
+                      type: S
+                  hashKey: connectionId                  
+                  globalSecondaryIndex:
+                    - hashKey: ConnectionTypeIndex
+                      name: connectionType
+                      projectionType: ALL
+                  ttl:
                     attributeName: ttl
                     enabled: true
                   tags:
@@ -69,7 +64,7 @@ spec:
               kind: Role
               spec:
                 forProvider:
-                  assumeRolePolicyDocument: |
+                  assumeRolePolicy: |
                     {
                       "Version": "2012-10-17",
                       "Statement": [
@@ -99,7 +94,7 @@ spec:
               kind: Policy
               spec:
                 forProvider:
-                  document: |
+                  policy: |
                     {
                       "Version": "2012-10-17",
                       "Statement": [
@@ -137,14 +132,14 @@ spec:
                   region: eu-central-1
                   runtime: nodejs22.x
                   handler: index.handler
-                  code:
-                    zipFile: |
-                      exports.handler = async (event) => {
-                        console.log('Connection event:', JSON.stringify(event, null, 2));
-                        return { statusCode: 200 };
-                      };
+                  #code:
+                  #  zipFile: |
+                  #    exports.handler = async (event) => {
+                  #      console.log('Connection event:', JSON.stringify(event, null, 2));
+                  #      return { statusCode: 200 };
+                  #    };
                   environment:
-                    - variables: {}
+                    variables: {}
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -156,7 +151,7 @@ spec:
                       type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
-                toFieldPath: spec.forProvider.environment[0].variables.CONNECTIONS_TABLE_NAME
+                toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
                 transforms:
                   - type: string
                     string:
@@ -173,14 +168,14 @@ spec:
                   region: eu-central-1
                   runtime: nodejs22.x
                   handler: index.handler
-                  code:
-                    zipFile: |
-                      exports.handler = async (event) => {
-                        console.log('Message event:', JSON.stringify(event, null, 2));
-                        return { statusCode: 200 };
-                      };
+                  #code:
+                  #  zipFile: |
+                  #    exports.handler = async (event) => {
+                  #      console.log('Message event:', JSON.stringify(event, null, 2));
+                  #      return { statusCode: 200 };
+                  #    };
                   environment:
-                    - variables: {}
+                    variables: {}
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
@@ -192,7 +187,7 @@ spec:
                       type: Format
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
-                toFieldPath: spec.forProvider.environment[0].variables.CONNECTIONS_TABLE_NAME
+                toFieldPath: spec.forProvider.environment.variables.CONNECTIONS_TABLE_NAME
                 transforms:
                   - type: string
                     string:
@@ -252,9 +247,7 @@ spec:
               kind: Distribution
               spec:
                 forProvider:
-                  distributionConfig:
-                    enabled: true
-                    defaultRootObject: index.html
+                  defaultRootObject: index.html
             patches:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.environment
